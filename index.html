@@ -1,7 +1,29 @@
 <!DOCTYPE html>
+<!--
+  ============================================================================
+  恋のことのは ── Speak, and love blooms.
+  声に出して英単語を発音すると、ストーリーが進む学習ゲーム
+
+  Copyright (c) 2026 Tomoaki Kito
+  https://github.com/goldfish0824-web/koi-no-kotonoha
+
+  This work is licensed under the Creative Commons
+  Attribution-NonCommercial-ShareAlike 4.0 International License.
+  https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+  ・作者名を表示すれば、自由に利用・改変・再配布できます
+  ・営利目的での利用はできません
+  ・改変版を公開する場合は、同じライセンスで公開してください
+
+  営利利用のご相談は、上記リポジトリの Issues までお願いします。
+  ============================================================================
+-->
 <html lang="ja">
 <head>
 <meta charset="utf-8">
+<meta name="author" content="Tomoaki Kito">
+<meta name="description" content="声に出して英単語を発音すると、ストーリーが進む英語学習ゲーム。ブラウザだけで遊べます。">
+<meta name="license" content="CC BY-NC-SA 4.0">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#241B3A">
 <title>恋のことのは ── 声にするたび、恋が実る</title>
@@ -363,6 +385,12 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .wl-empty{text-align:center;color:var(--dim);font-size:13.5px;padding:30px 10px;line-height:2}
 
 /* ---------- マイク診断 ---------- */
+/* ---------- クレジット ---------- */
+.credit{margin-top:18px;text-align:center;font-size:11px;color:var(--dim);
+  letter-spacing:.02em;line-height:1.7;opacity:.75}
+.credit a{color:var(--dim);text-decoration:underline;text-underline-offset:2px}
+.credit a:hover{color:var(--muted)}
+
 .diag-table{display:flex;flex-direction:column;gap:1px;border-radius:14px;overflow:hidden;margin-bottom:14px}
 .diag-row{display:flex;justify-content:space-between;align-items:center;gap:12px;
   padding:11px 13px;background:var(--dusk);font-size:13.5px;color:var(--muted)}
@@ -445,6 +473,9 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
         <button class="mini-link" id="btnReset">記録を消す</button>
       </div>
       <div class="footer-note">マイクを使います。iPhone は Safari、Android は Chrome で開いてください。<br>チャット内のプレビューではなく、ブラウザで開くと確実です。</div>
+      <div class="credit">
+        © 2026 Tomoaki Kito　/　<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.ja" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>
+      </div>
     </div>
   </section>
 
@@ -620,6 +651,11 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
       <p><span class="k">8.</span> 「苦手のことば」では、🎤 を押すとその場で発音をチェックできます。正しく言えたら、リストから自動で消えます。</p>
       <p class="muted" style="font-size:12px">うまく聞き取ってもらえないときは、設定の「発音判定」を<b>あまい</b>にしてみてください。</p>
       <p class="muted" style="font-size:12px">マイクがまったく反応しないときは、タイトル画面の「マイクの確認」をお試しください。iPhone では「設定 → 一般 → キーボード → 音声入力」がオンである必要があります。</p>
+      <p class="muted" style="font-size:11.5px;margin-top:14px;padding-top:12px;border-top:1px dashed rgba(84,64,111,.5)">
+        「恋のことのは」© 2026 Tomoaki Kito<br>
+        <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.ja" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">CC BY-NC-SA 4.0</a> のもとで公開しています。
+        作者名を表示すれば、自由に使い、改変し、配布できます（営利利用を除く）。
+      </p>
       <p class="muted" style="font-size:12px">マイクが使えないときは、下の「キーボードで入力する」で切り替えられます。</p>
     </div>
     <button class="btn primary block" id="helpClose" style="margin-top:16px">とじる</button>
