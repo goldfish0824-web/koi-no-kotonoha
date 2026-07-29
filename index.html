@@ -361,6 +361,21 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .wl-status.ok{color:var(--mint);background:rgba(143,227,198,.13)}
 .wl-status.ng{color:var(--sunset);background:rgba(255,176,124,.11)}
 .wl-empty{text-align:center;color:var(--dim);font-size:13.5px;padding:30px 10px;line-height:2}
+
+/* ---------- マイク診断 ---------- */
+.diag-table{display:flex;flex-direction:column;gap:1px;border-radius:14px;overflow:hidden;margin-bottom:14px}
+.diag-row{display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:11px 13px;background:var(--dusk);font-size:13.5px;color:var(--muted)}
+.diag-row b{font-weight:600}
+.diag-row b.ok{color:var(--mint)}
+.diag-row b.ng{color:var(--sunset)}
+.diag-result{display:none;margin-top:12px;font-size:13.5px;line-height:1.8;
+  padding:12px 14px;border-radius:12px;background:rgba(0,0,0,.2);color:var(--muted)}
+.diag-result:not(:empty){display:block}
+.diag-result i{font-style:normal;font-family:var(--en);color:var(--cream)}
+.diag-result.ok{color:var(--mint);background:rgba(143,227,198,.13)}
+.diag-result.ng{color:var(--sunset);background:rgba(255,176,124,.11)}
+#btnDiagMic.rec{animation:micPulse 1.15s ease-in-out infinite}
 .btn[disabled]{opacity:.38;pointer-events:none}
 
 /* ---------- ending ---------- */
@@ -426,9 +441,10 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
       <div class="top-actions">
         <button class="mini-link" id="btnSettings">設定</button>
         <button class="mini-link" id="btnReviewTop">苦手のことば</button>
+        <button class="mini-link" id="btnDiagTop">マイクの確認</button>
         <button class="mini-link" id="btnReset">記録を消す</button>
       </div>
-      <div class="footer-note">マイクを使います。iPhone は Safari、Android は Chrome で開いてください。<br>はじめて開いたときに出るマイクの確認は「許可」を選んでください。</div>
+      <div class="footer-note">マイクを使います。iPhone は Safari、Android は Chrome で開いてください。<br>チャット内のプレビューではなく、ブラウザで開くと確実です。</div>
     </div>
   </section>
 
@@ -446,6 +462,21 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
         <button class="mini-link" id="btnReviewSel">苦手のことば</button>
         <button class="mini-link" id="btnTitle">タイトルへ</button>
       </div>
+    </div>
+  </section>
+
+  <!-- DIAG (マイク診断) -->
+  <section class="screen" id="diag">
+    <div class="wrap">
+      <div class="head">
+        <h1>マイクの確認</h1>
+        <button class="mini-link" id="btnDiagBack">もどる</button>
+      </div>
+      <div id="diagTable" class="diag-table"></div>
+      <p class="progress-note" id="diagHint"></p>
+      <button class="btn primary block" id="btnDiagMic">🎤 マイクを試す</button>
+      <div id="diagResult" class="diag-result"></div>
+      <div class="footer-note">うまくいかないときは、設定で「効果音」と「お手本の音声」を消すと動くことがあります。<br>それでもだめなら、キーボード入力でも遊べます。</div>
     </div>
   </section>
 
@@ -588,6 +619,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
       <p><span class="k">7.</span> 言えなかったことばは自動で記録されます。プレイ直後の結果画面か、「苦手のことば」からいつでも練習し直せます。</p>
       <p><span class="k">8.</span> 「苦手のことば」では、🎤 を押すとその場で発音をチェックできます。正しく言えたら、リストから自動で消えます。</p>
       <p class="muted" style="font-size:12px">うまく聞き取ってもらえないときは、設定の「発音判定」を<b>あまい</b>にしてみてください。</p>
+      <p class="muted" style="font-size:12px">マイクがまったく反応しないときは、タイトル画面の「マイクの確認」をお試しください。iPhone では「設定 → 一般 → キーボード → 音声入力」がオンである必要があります。</p>
       <p class="muted" style="font-size:12px">マイクが使えないときは、下の「キーボードで入力する」で切り替えられます。</p>
     </div>
     <button class="btn primary block" id="helpClose" style="margin-top:16px">とじる</button>
@@ -779,6 +811,7 @@ function notice(html){ const n=$('#notice'); n.innerHTML=html; n.className='noti
 function show(id){ $$('.screen').forEach(s=>s.classList.toggle('on', s.id===id));
   window.scrollTo(0,0);
   try{ if(id!=='review') chkStop(true); }catch(e){}
+  try{ if(id!=='diag') diagStop(); }catch(e){}
   try{ updateReviewLinks(); }catch(e){} }
 function setSky(mood){ $('#sky').className = 'sky' + (mood?(' '+mood):''); }
 
@@ -1144,9 +1177,8 @@ function initPetals(){
     el.style.setProperty('--dx', ((Math.random()*80-40)).toFixed(0)+'px');
     el.style.animationDuration = dur.toFixed(1)+'s';
     el.style.animationDelay = delay.toFixed(1)+'s';
-    const sc = .6 + Math.random()*.8;   /* transform は fall アニメが持っているので大きさで表現する */
-    el.style.width = (11*sc).toFixed(1)+'px';
-    el.style.height = (11*sc).toFixed(1)+'px';
+    const sc = .6 + Math.random()*.8;
+    el.style.transform = `scale(${sc.toFixed(2)})`;
     box.appendChild(el);
   }
 }
@@ -1166,7 +1198,7 @@ function renderPair(host, gap){
         <img src="${CH().img}" alt="${escapeHtml(CH().name)}" draggable="false">
         <div class="char-blush"></div>
       </div>
-      <div class="char-note">${escapeHtml(CH().name)}の画像を表示できませんでした。<br>ページを再読み込みしてみてください。</div>
+      <div class="char-note">${CH().img} が見つかりません。<br>このHTMLと同じフォルダに置いてください。</div>
     </div>`;
   const box0 = host.querySelector('.char');
   if (box0){ box0.style.setProperty('--face-x', CH().face.x);
@@ -1203,11 +1235,19 @@ function cineBeat(host, speaking){
 }
 
 /* ---------- sound (warm chimes) ---------- */
-const AUDIO = (() => { let ac=null; return {
+const AUDIO = (() => { let ac=null, susT=0; return {
   get(){ if(!ac){ try{ ac=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } }
+    clearTimeout(susT);
     if(ac.state==='suspended'){ try{ac.resume();}catch(e){} } return ac; },
-  peek(){ return ac; } }; })();
-setInterval(()=>{ const a=AUDIO.peek(); if(a&&a.state==='suspended'){ try{a.resume();}catch(e){} } },4000);
+  peek(){ return ac; },
+  /* iOS では AudioContext が running の間、音声認識がマイクを取得できない。
+     認識を始める前に必ずオーディオセッションを手放す。 */
+  release(){ clearTimeout(susT); susT=0;
+    if(ac && ac.state==='running'){ try{ ac.suspend(); }catch(e){} } },
+  /* 効果音を鳴らし終えたら自動で手放す */
+  autoRelease(ms){ clearTimeout(susT);
+    susT=setTimeout(()=>{ if(ac && ac.state==='running'){ try{ ac.suspend(); }catch(e){} } }, ms||800); }
+}; })();
 const SFX = (() => {
   function ctx(){ if(CFG.sfx!=='on') return null; return AUDIO.get(); }
   function bell(f, t0, dur, gain){ const a=ctx(); if(!a) return;
@@ -1215,7 +1255,8 @@ const SFX = (() => {
     const g=a.createGain(); g.gain.setValueAtTime(.0001,a.currentTime+t0);
     g.gain.exponentialRampToValueAtTime(gain,a.currentTime+t0+.012);
     g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+t0+dur);
-    o.connect(g); g.connect(a.destination); o.start(a.currentTime+t0); o.stop(a.currentTime+t0+dur+.02); }
+    o.connect(g); g.connect(a.destination); o.start(a.currentTime+t0); o.stop(a.currentTime+t0+dur+.02);
+    AUDIO.autoRelease((t0+dur)*1000+320); }
   return {
     correct(){ bell(659.3,0,.5,.16); bell(987.8,.06,.55,.12); bell(1318.5,.12,.5,.08); },
     flutter(){ bell(880,0,.6,.18); bell(1174.7,.05,.6,.14); bell(1567.9,.1,.7,.12); bell(2093,.16,.6,.08); },
@@ -1238,7 +1279,8 @@ function say(word, opts){
   const resume = IS_IOS && recWant && CFG.input==='voice' && !force;
   if(resume) stopRec();
   const done = () => { clearTimeout(sayTimer); sayTimer=0;
-    if(resume && G.running && CFG.input==='voice' && !recWant) startRec(); };
+    if(resume && G.running && CFG.input==='voice' && !recWant)
+      setTimeout(()=>{ if(G.running && CFG.input==='voice' && !recWant) startRec(); }, IS_IOS?300:0); };
   const speakNow = () => { try{
     const u=new SpeechSynthesisUtterance(word);
     u.lang='en-US'; u.rate=.9; u.pitch=1.05; u.volume=1;
@@ -1299,8 +1341,14 @@ function startRec(){
   if(!SRC){ notice('<b>このブラウザは音声入力に対応していません。</b>iPhone は Safari、Android は Chrome をお試しください。キーボード入力に切り替えました。'); setMode('type'); return; }
   if(!rec) rec=buildRec();
   recWant=true;
-  (function tryStart(n){ try{ rec.start(); }
-    catch(e){ if(n>0&&recWant) setTimeout(()=>tryStart(n-1),320); } })(3);
+  /* 認識はオーディオセッションを独占する。鳴っているものを全部止めてから始める。 */
+  AUDIO.release();
+  if(window.speechSynthesis){ try{ if(speechSynthesis.speaking||speechSynthesis.pending) speechSynthesis.cancel(); }catch(e){} }
+  setTimeout(()=>{
+    if(!recWant) return;
+    (function tryStart(n){ try{ rec.start(); }
+      catch(e){ if(n>0&&recWant) setTimeout(()=>tryStart(n-1),320); } })(3);
+  }, IS_IOS ? 260 : 0);
 }
 function stopRec(){ recWant=false; try{ rec&&rec.stop(); }catch(e){} $('#wave').classList.remove('live'); clearGhost(); }
 
@@ -1375,7 +1423,6 @@ function chapterProgress(){
 }
 
 async function nextWord(){
-  if(!G.running) return;   /* 「やめる」直後に残っていたタイマーが動くのを防ぐ */
   G.locked=false; G.nearCount=0; clearGhost();
   $('#card').classList.remove('right');
   gateUntil = Date.now()+350;
@@ -1577,17 +1624,13 @@ async function playEnding(rank){
   setSky('ch6');
   const F=$('#endFigure'); renderPair(F,0); setPairGap(F,0);
   const beats = CH().ending;
-  const titleEl=$('#endTitle');
-  titleEl.textContent = CH().endTitle;
-  titleEl.classList.remove('in'); void titleEl.offsetWidth; titleEl.classList.add('in');
+  $('#endTitle').textContent = CH().endTitle;
+  $('#endTitle').classList.add('in');
   let i=0;
   const nameEl=$('#endName'), textEl=$('#endText'), nextEl=$('#endNext'), contEl=$('#endCont');
-  /* 2周目以降のために、ボタンの状態を初期化しておく */
-  nextEl.style.display='flex'; contEl.style.display='none'; contEl.onclick=null;
-  function paint(){ const b=beats[i]||{}; nameEl.textContent=b.who||''; textEl.textContent=b.text||'';
+  function paint(){ const b=beats[i]; nameEl.textContent=b.who||''; textEl.textContent=b.text;
     cineBeat(F, b.who===CH().name); SFX.tap(); }
   paint();
-  show('ending');
   await new Promise(res=>{
     function adv(){ i++; if(i<beats.length){ paint(); }
       else { nextEl.style.display='none'; contEl.style.display='block';
@@ -1700,7 +1743,7 @@ const SETTINGS = [
   {k:'dots', label:'文字数ヒント', sub:'【F····】のドット表示', opts:[['on','出す'],['off','消す']]},
   {k:'jp', label:'日本語訳', sub:'意味を表示する', opts:[['on','出す'],['off','消す']]},
   {k:'tts', label:'お手本の音声', sub:'正解の直後・言えなかったときに再生', opts:[['on','鳴らす'],['off','消す']]},
-  {k:'sfx', label:'効果音', sub:'', opts:[['on','鳴らす'],['off','消す']]},
+  {k:'sfx', label:'効果音', sub:'マイクが反応しないときは「消す」', opts:[['on','鳴らす'],['off','消す']]},
 ];
 function renderSettings(){
   $('#setBody').innerHTML = SETTINGS.map(s=>`
@@ -1841,6 +1884,79 @@ function startPractice(rows){
   beginRun({ stage:Math.min(6, Math.max(1, G.stage||1)), review:true, list, guard:list });
 }
 
+/* =========================================================================
+   マイク自己診断
+   ========================================================================= */
+function inAppBrowser(){
+  const u = navigator.userAgent || '';
+  if(/Line\//i.test(u)) return 'LINE';
+  if(/FBAN|FBAV|Instagram/i.test(u)) return 'Facebook / Instagram';
+  if(/CriOS/i.test(u)) return 'Chrome（iPhone版）';
+  if(/Twitter/i.test(u)) return 'X (Twitter)';
+  return '';
+}
+let diagRec=null, diagTimer=0;
+function diagStop(){
+  clearTimeout(diagTimer); diagTimer=0;
+  if(diagRec){ try{ diagRec.onresult=null; diagRec.onerror=null; diagRec.onend=null;
+    if(diagRec.abort) diagRec.abort(); else diagRec.stop(); }catch(e){} diagRec=null; }
+  const b=$('#btnDiagMic'); if(b){ b.classList.remove('rec'); b.textContent='🎤 マイクを試す'; }
+}
+function diagSay(html, cls){
+  const el=$('#diagResult'); if(!el) return;
+  el.innerHTML=html; el.className='diag-result'+(cls?(' '+cls):'');
+}
+function renderDiag(){
+  const app = inAppBrowser();
+  const rows = [];
+  rows.push(['音声認識に対応', SRC ? 'はい' : 'いいえ', SRC?'ok':'ng']);
+  rows.push(['ブラウザ', app ? (app+'（アプリ内）') : (IS_IOS?'Safari など':'標準ブラウザ'), app?'ng':'ok']);
+  rows.push(['安全な接続(https)', location.protocol==='https:'||location.hostname==='localhost' ? 'はい':'いいえ',
+             (location.protocol==='https:'||location.hostname==='localhost')?'ok':'ng']);
+  $('#diagTable').innerHTML = rows.map(r=>
+    `<div class="diag-row"><span>${r[0]}</span><b class="${r[2]}">${escapeHtml(r[1])}</b></div>`).join('');
+  let hint='';
+  if(app) hint = `<b>${escapeHtml(app)}のアプリ内ブラウザで開いています。</b>右上や下のメニューから「Safariで開く」を選んでください。ここでは音声入力が使えません。`;
+  else if(!SRC) hint = 'このブラウザは音声入力に対応していません。iPhone は <b>Safari</b>、Android は <b>Chrome</b> で開いてください。';
+  else hint = '下のボタンを押して、英語で <b>hello</b> と言ってみてください。';
+  $('#diagHint').innerHTML = hint;
+  diagSay('','');
+}
+function diagMic(){
+  if(diagRec){ diagStop(); diagSay('',''); return; }
+  if(!SRC){ diagSay('このブラウザでは音声入力が使えません。','ng'); return; }
+  AUDIO.release();
+  if(window.speechSynthesis){ try{ speechSynthesis.cancel(); }catch(e){} }
+  const b=$('#btnDiagMic'); if(b){ b.classList.add('rec'); b.textContent='● 聞いています（押すと停止）'; }
+  diagSay('🎙️ どうぞ ── 何か英語で話してみてください','');
+  let r; try{ r=new SRC(); }catch(e){ diagSay('マイクを起動できませんでした。','ng'); diagStop(); return; }
+  r.lang='en-US'; r.continuous=true; r.interimResults=true; r.maxAlternatives=3;
+  let heardSomething=false;
+  r.onresult=e=>{
+    const t=[]; for(let i=0;i<e.results.length;i++) t.push(e.results[i][0].transcript);
+    const txt=t.join(' ').trim();
+    if(txt){ heardSomething=true; diagSay('✓ 聞こえました：<i>'+escapeHtml(txt)+'</i><br>マイクは正常に動いています。','ok'); }
+  };
+  r.onerror=e=>{
+    if(e.error==='not-allowed'||e.error==='service-not-allowed')
+      diagSay('<b>マイクが許可されていません。</b><br>Safariのアドレスバー左の「ぁA」→ Webサイトの設定 → マイク → 許可、を確認してください。','ng');
+    else if(e.error==='audio-capture')
+      diagSay('<b>マイクが見つかりません。</b>','ng');
+    else if(e.error==='no-speech' && !heardSomething)
+      diagSay('声が届いていません。もう少し大きな声で、もう一度お試しください。','ng');
+    diagStop();
+  };
+  r.onend=()=>{ if(diagRec && !heardSomething){ try{ r.start(); }catch(e){} } };
+  diagRec=r;
+  try{ r.start(); }catch(e){ diagSay('マイクを起動できませんでした。','ng'); diagStop(); return; }
+  diagTimer=setTimeout(()=>{
+    if(!heardSomething){
+      diagSay('<b>反応がありませんでした。</b><br>①「設定 → 一般 → キーボード → 音声入力」がオンか確認<br>②設定画面で「効果音」と「お手本の音声」を<b>消す</b>にして再挑戦<br>③それでもだめならキーボード入力をお使いください','ng');
+    }
+    diagStop();
+  }, 9000);
+}
+
 /* ---------- wiring ---------- */
 function wire(){
   $('#btnStart').onclick = ()=>{ AUDIO.get(); if(window.speechSynthesis && !ttsReady){ try{ const u=new SpeechSynthesisUtterance('.'); u.volume=0; speechSynthesis.speak(u); ttsReady=true; }catch(e){} } renderSelect(); show('select'); };
@@ -1855,6 +1971,9 @@ function wire(){
     await saveGame(); await saveCfg(); setJudgeLevel(CFG.judge);
     toast('記録を消しました。'); renderSelect(); updateReviewLinks();
   };
+  $('#btnDiagTop').onclick = ()=>{ AUDIO.get(); renderDiag(); setSky(''); show('diag'); };
+  $('#btnDiagBack').onclick = ()=>{ diagStop(); setSky(''); show('title'); };
+  $('#btnDiagMic').onclick = ()=> diagMic();
   $('#btnReviewTop').onclick = ()=> openReview('title');
   $('#btnReviewSel').onclick = ()=> openReview('select');
   $('#btnRevBack').onclick = ()=>{
