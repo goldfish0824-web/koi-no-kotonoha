@@ -384,35 +384,6 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .wl-status.ng{color:var(--sunset);background:rgba(255,176,124,.11)}
 .wl-empty{text-align:center;color:var(--dim);font-size:13.5px;padding:30px 10px;line-height:2}
 
-/* ---------- 単語リスト ---------- */
-.ls-h{font-size:14px;font-weight:700;margin:22px 0 10px;color:var(--cream)}
-.ls-item{display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:14px;
-  background:var(--dusk);border:1px solid rgba(84,64,111,.55)}
-.ls-item.on{border-color:var(--blush);background:linear-gradient(135deg,rgba(240,104,151,.14),rgba(255,176,124,.06))}
-.ls-radio{flex:0 0 auto;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--haze);
-  display:grid;place-items:center}
-.ls-item.on .ls-radio{border-color:var(--blush)}
-.ls-item.on .ls-radio::after{content:'';width:9px;height:9px;border-radius:50%;
-  background:linear-gradient(135deg,var(--blush),var(--blush-deep))}
-.ls-body{flex:1;min-width:0}
-.ls-name{font-size:14px;color:var(--cream);line-height:1.3;word-break:break-all}
-.ls-meta{font-size:11.5px;color:var(--dim);margin-top:2px}
-.ls-acts{flex:0 0 auto;display:flex;gap:6px}
-.ls-acts button{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;font-size:13px;
-  background:rgba(255,255,255,.05);border:1px solid var(--haze);color:var(--dim)}
-.ls-acts button:active{transform:scale(.93)}
-
-.ls-add input[type=text],.ls-add textarea{width:100%;background:var(--dusk);border:1px solid var(--haze);
-  border-radius:12px;padding:11px 13px;color:var(--cream);font-size:14px;font-family:inherit;margin-bottom:10px}
-.ls-add textarea{font-family:var(--en);font-size:13px;line-height:1.6;resize:vertical}
-.ls-add input:focus,.ls-add textarea:focus{outline:none;border-color:var(--blush)}
-.ls-or{text-align:center;font-size:11.5px;color:var(--dim);margin:4px 0 10px}
-.ls-preview{font-size:12px;line-height:1.7;color:var(--muted);padding:0}
-.ls-preview:not(:empty){padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.2);margin-top:2px}
-.ls-preview.ng{color:var(--sunset)}
-.ls-preview.ok{color:var(--mint)}
-.ls-preview i{font-style:normal;font-family:var(--en);color:var(--cream)}
-
 /* ---------- タイムアタック ---------- */
 .ta-best{background:var(--dusk);border:1px solid rgba(84,64,111,.55);border-radius:18px;
   padding:16px 18px 14px;margin-bottom:16px}
@@ -539,7 +510,6 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
         <button class="mini-link" id="btnSettings">設定</button>
         <button class="mini-link" id="btnReviewTop">苦手のことば</button>
         <button class="mini-link" id="btnTaTop">タイムアタック</button>
-        <button class="mini-link" id="btnListsTop">単語リスト</button>
         <button class="mini-link" id="btnDiagTop">マイクの確認</button>
         <button class="mini-link" id="btnReset">記録を消す</button>
       </div>
@@ -563,42 +533,6 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
       <div class="top-actions">
         <button class="mini-link" id="btnReviewSel">苦手のことば</button>
         <button class="mini-link" id="btnTitle">タイトルへ</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- WORD LISTS -->
-  <section class="screen" id="lists">
-    <div class="wrap">
-      <div class="head">
-        <h1>単語リスト</h1>
-        <button class="mini-link" id="btnListsBack">もどる</button>
-      </div>
-      <p class="progress-note" id="lsNote"></p>
-      <div id="lsItems" class="wordlist"></div>
-
-      <h2 class="ls-h">新しいリストを追加</h2>
-      <div class="ls-add">
-        <input id="lsName" type="text" placeholder="リスト名（例：3年 夏期課題）" maxlength="40">
-        <div class="ls-file">
-          <label class="btn ghost block" for="lsFile">CSVファイルを選ぶ</label>
-          <input id="lsFile" type="file" accept=".csv,.tsv,.txt,text/csv,text/plain" style="display:none">
-        </div>
-        <div class="ls-or">または、下に貼り付け</div>
-        <textarea id="lsPaste" rows="6" placeholder="arrive,空港に到着する&#10;agree,あなたの考えに賛成する&#10;wait,バスを待つ"></textarea>
-        <div id="lsPreview" class="ls-preview"></div>
-        <button class="btn primary block" id="btnLsAdd" style="margin-top:10px">このリストを追加する</button>
-      </div>
-
-      <div class="footer-note" style="text-align:left">
-        <b>書き方</b><br>
-        1行に1語。カンマ区切り、またはExcelからそのまま貼り付け（タブ区切り）。<br>
-        <b>2列</b>　英単語, 日本語<br>
-        <b>4列</b>　英単語, 日本語, フレーズ前, フレーズ後<br>
-        言い方が複数あるときは <b>arrive / get to</b> のように <b>/</b> で区切ります。<br>
-        1行目が見出し（英単語,日本語 など）なら自動で読み飛ばします。<br><br>
-        リストは6つの章に自動で分けられます。6語以上、できれば60語以上あると章立てが自然になります。<br>
-        <b>苦手のことばとタイムアタックの記録は、リストごとに別々に保存されます。</b>
       </div>
     </div>
   </section>
@@ -803,7 +737,6 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
       <p class="muted" style="font-size:12px">うまく聞き取ってもらえないときは、設定の「発音判定」を<b>あまい</b>にしてみてください。</p>
       <p class="muted" style="font-size:12px">マイクがまったく反応しないときは、タイトル画面の「マイクの確認」をお試しください。iPhone では「設定 → 一般 → キーボード → 音声入力」がオンである必要があります。</p>
       <p style="margin-top:14px"><span class="k">★</span> <b>タイムアタック</b>：制限時間内に何語 言えるかに挑戦するモードです。ハートは減らず、最後まで走り切れます。自己ベストと記録の変化がグラフで残ります。</p>
-      <p><span class="k">★</span> <b>単語リスト</b>：自分の単語をCSVで読み込んで、このゲームで練習できます。苦手のことばとタイムアタックの記録は、リストごとに別々に保存されます。</p>
       <p class="muted" style="font-size:11.5px;margin-top:14px;padding-top:12px;border-top:1px dashed rgba(84,64,111,.5)">
         「恋のことのは」© 2026 Tomoaki Kito<br>
         <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.ja" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">CC BY-NC-SA 4.0</a> のもとで公開しています。
@@ -1020,45 +953,7 @@ const Store = (() => {
 })();
 const DEF = { input:'voice', speed:'normal', dots:'on', jp:'on', tts:'on', sfx:'on', judge:'soft', count:'20' };
 let CFG = { ...DEF };
-let SAVE = { routes:{}, weak:[], cur:'haruto', lists:{}, active:'builtin', data:{} };
-const BUILTIN = 'builtin';
-const BUILTIN_NAME = '恋のことのは（内蔵）';
-
-/* いま表示中のリストの学習データを、リスト別の保管庫へ写す */
-function stashList(){
-  if(!SAVE.data) SAVE.data = {};
-  SAVE.data[SAVE.active || BUILTIN] = {
-    weak: SAVE.weak || [], ta: SAVE.ta || {best:{},hist:[]}, routes: SAVE.routes || {}
-  };
-}
-function listRows(id){
-  if(id===BUILTIN || !id) return W;
-  const l = SAVE.lists && SAVE.lists[id];
-  return (l && l.rows && l.rows.length) ? l.rows : W;
-}
-function listName(id){
-  if(id===BUILTIN || !id) return BUILTIN_NAME;
-  const l = SAVE.lists && SAVE.lists[id];
-  return l ? l.name : '(不明なリスト)';
-}
-function allLists(){
-  const out = [{ id:BUILTIN, name:BUILTIN_NAME, count:W.length, builtin:true }];
-  const ls = SAVE.lists || {};
-  Object.keys(ls).forEach(k=>out.push({ id:k, name:ls[k].name, count:(ls[k].rows||[]).length }));
-  return out;
-}
-/* リストを切り替える。学習データもまるごと入れ替わる。 */
-function useList(id){
-  if(!SAVE.data) SAVE.data = {};
-  stashList();
-  SAVE.active = id;
-  const d = SAVE.data[id] || {};
-  SAVE.weak   = d.weak   || [];
-  SAVE.ta     = d.ta     || {best:{},hist:[]};
-  SAVE.routes = d.routes || {};
-  applyWords(listRows(id));
-  saveGame();
-}
+let SAVE = { routes:{}, weak:[], cur:'haruto' };
 /* いま選んでいるキャラ（または指定キャラ）の進行データ */
 function route(id){
   const k = id || CUR;
@@ -1074,16 +969,14 @@ async function loadAll(){
   try{ const a=await Store.get('koi:cfg'); if(a) CFG={...DEF,...JSON.parse(a)}; }catch(e){}
   try{ const b=await Store.get('koi:save');
     if(b){ const o=JSON.parse(b);
-      SAVE = { routes:{}, weak:[], cur:'haruto', lists:{}, active:BUILTIN, data:{}, ...o };
+      SAVE = { routes:{}, weak:[], cur:'haruto', ...o };
       if(!SAVE.routes) SAVE.routes = {};
-      if(!SAVE.lists)  SAVE.lists  = {};
-      if(!SAVE.data)   SAVE.data   = {};
-      if(!SAVE.active) SAVE.active = BUILTIN;
-      /* 保存していたリストが消えていたら内蔵に戻す */
-      if(SAVE.active!==BUILTIN && !SAVE.lists[SAVE.active]) SAVE.active = BUILTIN;
-      const d = SAVE.data[SAVE.active];
-      if(d){ SAVE.weak=d.weak||SAVE.weak; SAVE.ta=d.ta||SAVE.ta; SAVE.routes=d.routes||SAVE.routes; }
-      applyWords(listRows(SAVE.active));
+      /* 単語リスト機能があった版のデータが残っていたら、内蔵リストの記録に戻す */
+      if(o.active && o.active!=='builtin' && o.data && o.data.builtin){
+        const b = o.data.builtin;
+        SAVE.weak = b.weak || []; SAVE.ta = b.ta || {best:{},hist:[]}; SAVE.routes = b.routes || {};
+      }
+      delete SAVE.lists; delete SAVE.active; delete SAVE.data;
       /* キャラ別になる前の記録は、大翔ルートへ引き継ぐ */
       if(o.cleared || o.best){
         SAVE.routes.haruto = { cleared:o.cleared||{}, best:o.best||{} };
@@ -1096,33 +989,13 @@ function restoreChar(){
   setChar(charOpen(c) ? c.id : 'haruto');
 }
 const saveCfg = () => Store.set('koi:cfg', JSON.stringify(CFG));
-const saveGame = () => { try{ stashList(); }catch(e){} return Store.set('koi:save', JSON.stringify(SAVE)); };
+const saveGame = () => Store.set('koi:save', JSON.stringify(SAVE));
 
 /* ---------- words ---------- */
-let WORDS = W;              /* いま使っている単語リスト */
-let POOL = {};              /* 章ごとの出題プール（常に6章に分割） */
-let byNum = {};
-const CHN = 6;
-
-/* 章の範囲。リストの語数がいくつでも6章に均等分割する。 */
-function chSpan(i){          /* i: 0..5 → [開始index, 終了index) */
-  const n = WORDS.length;
-  return [Math.floor(n*i/CHN), Math.floor(n*(i+1)/CHN)];
-}
-function chLo(n){ return chSpan(n-1)[0] + 1; }
-function chHi(n){ return chSpan(n-1)[1]; }
-
-function applyWords(rows){
-  WORDS = (rows && rows.length) ? rows : W;
-  byNum = {}; for (const r of WORDS) byNum[r[0]] = r;
-  POOL = {};
-  for (let i=0;i<CHN;i++){
-    const [a,b] = chSpan(i);
-    POOL[i+1] = WORDS.slice(a, b);
-    if(!POOL[i+1].length) POOL[i+1] = WORDS.slice(0, 1);
-  }
-}
-applyWords(W);
+const stageOf = n => Math.min(6, Math.ceil(Math.floor(n)/100));
+const POOL = {};
+for (const r of W){ (POOL[stageOf(r[0])] ||= []).push(r); }
+const byNum = {}; for (const r of W) byNum[r[0]] = r;
 
 /* ---------- chapters / story ---------- */
 const HARUTO_STAGES = [
@@ -1662,7 +1535,7 @@ async function enterChapter(n){
   const cnt = CFG.count==='100' ? POOL[n].length : Math.min(+CFG.count, POOL[n].length);
   await CINE.play({
     no:`第${n}章`, title:st.t, mood:st.mood, beats:st.intro,
-    meta:`舞台　　${st.place}\n出題範囲　単語 ${chLo(n)}–${chHi(n)}\n出題数　　${cnt} 語 ＋ 勇気の場面\n入力　　　${CFG.input==='voice'?'声（マイク）':'キーボード'}`,
+    meta:`舞台　　${st.place}\n出題範囲　単語 ${st.lo}–${st.hi}\n出題数　　${cnt} 語 ＋ 勇気の場面\n入力　　　${CFG.input==='voice'?'声（マイク）':'キーボード'}`,
     cta:'物語を始める'
   });
   startChapter(n, false);
@@ -1857,95 +1730,6 @@ async function momentIntro(st){
 }
 
 /* =========================================================================
-   単語リストの読み込み・切り替え
-   ========================================================================= */
-function splitLine(line, d){
-  if(d==='\t') return line.split('\t');
-  const out=[]; let cur='', q=false;
-  for(let i=0;i<line.length;i++){
-    const ch=line[i];
-    if(q){ if(ch==='"'){ if(line[i+1]==='"'){cur+='"'; i++;} else q=false; } else cur+=ch; }
-    else if(ch==='"') q=true;
-    else if(ch===d){ out.push(cur); cur=''; }
-    else cur+=ch;
-  }
-  out.push(cur); return out;
-}
-/* CSV / TSV を内部形式 [番号, 前, 後, 日本語, 答え] に変換 */
-function parseWordList(text){
-  const lines = String(text||'').replace(/\r\n?/g,'\n').split('\n')
-    .map(l=>l.replace(/\u3000/g,' ').trim()).filter(Boolean);
-  if(!lines.length) return { rows:[], err:'中身が空です。' };
-  const delim = lines[0].indexOf('\t')>=0 ? '\t' : ',';
-  const cells = lines.map(l=>splitLine(l, delim).map(c=>c.trim()));
-  /* 見出し行の判定。部分一致だと「word1」のような語を見出しと誤判定してしまうので、
-     1列目と2列目の両方が見出し語そのものである場合だけ読み飛ばす。 */
-  const HEAD_RE = /^(英単語|単語|語|word|words|english|英語|スペル|spelling|日本語|意味|訳|和訳|meaning|japanese|jp)$/i;
-  let start = 0;
-  const c0 = cells[0] || [];
-  if(c0.length>=2 && HEAD_RE.test((c0[0]||'').trim()) && HEAD_RE.test((c0[1]||'').trim())) start = 1;
-  const rows=[]; let num=1, skipped=0;
-  for(let i=start;i<cells.length;i++){
-    const c = cells[i];
-    const word=(c[0]||'').trim(), jp=(c[1]||'').trim();
-    if(!word || !jp){ skipped++; continue; }
-    let pre=(c[2]||'').trim(), suf=(c[3]||'').trim();
-    /* 3列で「___」入りのフレーズが来たら前後に割る */
-    if(!suf && /_{2,}/.test(pre)){ const q=pre.split(/_{2,}/); pre=(q[0]||'').trim(); suf=(q[1]||'').trim(); }
-    const ans = word.split(/[\/|,]/).map(x=>x.trim()).filter(Boolean).join(',');
-    if(!ans){ skipped++; continue; }
-    rows.push([num++, pre, suf, jp, ans]);
-  }
-  if(!rows.length) return { rows:[], err:'読み取れる行がありませんでした。1列目に英単語、2列目に日本語を入れてください。' };
-  if(rows.length<6) return { rows, err:'語数が少なすぎます（6語以上必要です）。いまは '+rows.length+' 語です。' };
-  return { rows, skipped };
-}
-function listToCSV(rows){
-  const esc = v => /[",\n]/.test(v) ? '"'+String(v).replace(/"/g,'""')+'"' : String(v);
-  return '英単語,日本語,フレーズ前,フレーズ後\n' +
-    rows.map(r=>[r[4].split(',').join(' / '), r[3], r[1], r[2]].map(esc).join(',')).join('\n');
-}
-function downloadText(name, text){
-  try{
-    const b = new Blob(['\uFEFF'+text], {type:'text/csv;charset=utf-8'});
-    const u = URL.createObjectURL(b);
-    const a = document.createElement('a');
-    a.href=u; a.download=name; document.body.appendChild(a); a.click();
-    setTimeout(()=>{ URL.revokeObjectURL(u); a.remove(); }, 1500);
-  }catch(e){ toast('書き出しに失敗しました。'); }
-}
-
-function renderLists(){
-  const act = SAVE.active || BUILTIN;
-  $('#lsNote').textContent = `いま使っているリスト：${listName(act)}（${WORDS.length}語）`;
-  $('#lsItems').innerHTML = allLists().map(l=>`
-    <div class="ls-item${l.id===act?' on':''}" data-use="${escapeHtml(l.id)}">
-      <div class="ls-radio"></div>
-      <div class="ls-body">
-        <div class="ls-name">${escapeHtml(l.name)}</div>
-        <div class="ls-meta">${l.count} 語${l.id===act?' ・ 使用中':''}</div>
-      </div>
-      <div class="ls-acts">
-        <button data-exp="${escapeHtml(l.id)}" aria-label="書き出す">⇩</button>
-        ${l.builtin?'':`<button data-del-list="${escapeHtml(l.id)}" aria-label="削除">✕</button>`}
-      </div>
-    </div>`).join('');
-}
-function lsPreview(text){
-  const el = $('#lsPreview');
-  if(!String(text||'').trim()){ el.textContent=''; el.className='ls-preview'; return null; }
-  const r = parseWordList(text);
-  if(r.err && !r.rows.length){ el.textContent = r.err; el.className='ls-preview ng'; return null; }
-  if(r.err){ el.textContent = r.err; el.className='ls-preview ng'; return null; }
-  const s0 = r.rows[0];
-  el.innerHTML = `${r.rows.length} 語を読み取りました。`
-    + (r.skipped?`（${r.skipped} 行はとばしました）`:'')
-    + `<br>1語目：<i>${escapeHtml(s0[4].split(',')[0])}</i> — ${escapeHtml(s0[3])}`;
-  el.className='ls-preview ok';
-  return r.rows;
-}
-
-/* =========================================================================
    タイムアタック
    ========================================================================= */
 const TA_SEC = [30,60,120];
@@ -1964,9 +1748,9 @@ function taStore(){
   return SAVE.ta;
 }
 function taRows(){
-  if(taCfg.range==='weak'){ const w=weakRows(); return w.length?w:WORDS.slice(); }
-  if(taCfg.range==='ch')  return (POOL[taCfg.ch]||WORDS).slice();
-  return WORDS.slice();
+  if(taCfg.range==='weak'){ const w=weakRows(); return w.length?w:W.slice(); }
+  if(taCfg.range==='ch')  return (POOL[taCfg.ch]||W).slice();
+  return W.slice();
 }
 
 /* 出題は尽きない。使い切ったら切り直す。 */
@@ -2274,7 +2058,7 @@ function renderSelect(){
       <div class="ch-badge">${badge}</div>
       <div class="ch-body">
         <div class="ch-title">${st.s.replace('CHAPTER','第').replace(/(\d)/,' $1 章')} · ${escapeHtml(st.t)} ${rankPill}</div>
-        <div class="ch-sub">${escapeHtml(st.place)} ／ 単語 ${chLo(n)}–${chHi(n)}</div>
+        <div class="ch-sub">${escapeHtml(st.place)} ／ 単語 ${st.lo}–${st.hi}</div>
         <div class="ch-meta">${done?'クリア済み':(open?'挑戦できる':lockNote)}</div>
       </div>
     </button>`;
@@ -2564,49 +2348,6 @@ function wire(){
     await saveGame(); await saveCfg(); setJudgeLevel(CFG.judge);
     toast('記録を消しました。'); renderSelect(); updateReviewLinks();
   };
-  $('#btnListsTop').onclick = ()=>{ renderLists(); $('#lsPreview').textContent=''; setSky(''); show('lists'); };
-  $('#btnListsBack').onclick = ()=>{ setSky(''); show('title'); };
-  $('#lsPaste').addEventListener('input', e=> lsPreview(e.target.value));
-  $('#lsFile').addEventListener('change', e=>{
-    const f = e.target.files && e.target.files[0]; if(!f) return;
-    const rd = new FileReader();
-    rd.onload = ()=>{ $('#lsPaste').value = String(rd.result||''); lsPreview($('#lsPaste').value);
-      if(!$('#lsName').value.trim()) $('#lsName').value = f.name.replace(/\.(csv|tsv|txt)$/i,'').slice(0,40); };
-    rd.onerror = ()=> toast('ファイルを読めませんでした。');
-    rd.readAsText(f, 'utf-8');
-    e.target.value='';
-  });
-  $('#btnLsAdd').onclick = async ()=>{
-    const rows = lsPreview($('#lsPaste').value);
-    if(!rows){ toast('先に単語を貼り付けてください。'); return; }
-    const name = ($('#lsName').value||'').trim() || ('自作リスト '+(Object.keys(SAVE.lists||{}).length+1));
-    const id = 'wl_'+Date.now().toString(36);
-    if(!SAVE.lists) SAVE.lists={};
-    SAVE.lists[id] = { id, name, rows, created:Date.now() };
-    await saveGame();
-    useList(id);
-    $('#lsPaste').value=''; $('#lsName').value=''; $('#lsPreview').textContent='';
-    renderLists(); renderSelect(); updateReviewLinks();
-    toast(`「${name}」（${rows.length}語）に切り替えました。`);
-  };
-  $('#lsItems').addEventListener('click', async e=>{
-    const t=e.target; if(!t||!t.closest) return;
-    const exp = t.closest('[data-exp]');
-    if(exp){ const id=exp.dataset.exp;
-      downloadText(listName(id).replace(/[\\\/:*?"<>|]/g,'_')+'.csv', listToCSV(listRows(id))); return; }
-    const del = t.closest('[data-del-list]');
-    if(del){ const id=del.dataset.delList;
-      if(!confirm(`「${listName(id)}」を削除します。このリストの苦手のことばと記録も消えます。よろしいですか？`)) return;
-      delete SAVE.lists[id]; if(SAVE.data) delete SAVE.data[id];
-      if(SAVE.active===id) useList(BUILTIN); else await saveGame();
-      renderLists(); renderSelect(); updateReviewLinks();
-      toast('削除しました。'); return; }
-    const use = t.closest('[data-use]');
-    if(use){ const id=use.dataset.use;
-      if(id===SAVE.active) return;
-      useList(id); renderLists(); renderSelect(); updateReviewLinks();
-      toast(`「${listName(id)}」（${WORDS.length}語）に切り替えました。`); return; }
-  });
   $('#btnTaTop').onclick = ()=>{ AUDIO.get(); renderTA(null); setSky(''); show('ta'); };
   $('#btnTaBack').onclick = ()=>{ setSky(''); show('title'); };
   $('#btnTaStart').onclick = ()=>{ AUDIO.get(); startTA(); };
