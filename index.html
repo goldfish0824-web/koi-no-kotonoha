@@ -1364,7 +1364,7 @@ function buildRec(){
   };
   r.onerror=e=>{
     if(e.error==='not-allowed'||e.error==='service-not-allowed'){
-      recWant=false; notice('<b>マイクが使えません。</b>ブラウザのマイク許可を確認してください。キーボード入力に切り替えました。'); setMode('type');
+      recWant=false; notice('<b>マイクが使えません。</b>アドレスバー左の「ぁA」→ Webサイトの設定 → マイク → 許可、を確認してください。タイトル画面の「マイクの確認」で原因を調べられます。キーボード入力に切り替えました。'); setMode('type');
     } else if(e.error==='audio-capture'){
       recWant=false; notice('<b>マイクが見つかりません。</b>キーボード入力に切り替えました。'); setMode('type');
     }
@@ -1373,8 +1373,29 @@ function buildRec(){
     if(recWant) setTimeout(()=>{ try{rec.start();}catch(e){} },250); };
   return r;
 }
+let micPrimed=false;
+/* 初回だけ、明示的にマイクの許可を取りに行く。
+   iOS Safari は一度「許可しない」を押すと確認画面を出さなくなるため、
+   無言で失敗させず、その場で直し方を出す。 */
+function primeMic(){
+  if(micPrimed) return Promise.resolve(true);
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ micPrimed=true; return Promise.resolve(true); }
+  return navigator.mediaDevices.getUserMedia({audio:true}).then(st=>{
+    try{ st.getTracks().forEach(t=>t.stop()); }catch(e){}
+    micPrimed=true; return true;
+  }).catch(err=>{
+    const n=(err&&err.name)||'';
+    if(n==='NotAllowedError'||n==='SecurityError'||n==='PermissionDeniedError'){
+      recWant=false;
+      notice('<b>マイクの許可が「拒否」になっています。</b>アドレスバー左の「ぁA」→ Webサイトの設定 → マイク → 許可、を選んでページを再読み込みしてください。くわしくはタイトル画面の「マイクの確認」へ。キーボード入力に切り替えました。');
+      setMode('type'); return false;
+    }
+    micPrimed=true; return true;   /* 判定できないときは従来どおり進める */
+  });
+}
 function startRec(){
   if(!SRC){ notice('<b>このブラウザは音声入力に対応していません。</b>iPhone は Safari、Android は Chrome をお試しください。キーボード入力に切り替えました。'); setMode('type'); return; }
+  if(!micPrimed){ primeMic().then(ok=>{ if(ok && recWant!==false) startRec(); }); }
   if(!rec) rec=buildRec();
   recWant=true;
   /* 認識はオーディオセッションを独占する。鳴っているものを全部止めてから始める。 */
@@ -1931,9 +1952,9 @@ function inAppBrowser(){
   if(/Twitter/i.test(u)) return 'X (Twitter)';
   return '';
 }
-let diagRec=null, diagTimer=0;
+let diagRec=null, diagTimer=0, diagBusy=false, diagPerm=false;
 function diagStop(){
-  clearTimeout(diagTimer); diagTimer=0;
+  clearTimeout(diagTimer); diagTimer=0; diagBusy=false;
   if(diagRec){ try{ diagRec.onresult=null; diagRec.onerror=null; diagRec.onend=null;
     if(diagRec.abort) diagRec.abort(); else diagRec.stop(); }catch(e){} diagRec=null; }
   const b=$('#btnDiagMic'); if(b){ b.classList.remove('rec'); b.textContent='🎤 マイクを試す'; }
@@ -1949,6 +1970,7 @@ function renderDiag(){
   rows.push(['ブラウザ', app ? (app+'（アプリ内）') : (IS_IOS?'Safari など':'標準ブラウザ'), app?'ng':'ok']);
   rows.push(['安全な接続(https)', location.protocol==='https:'||location.hostname==='localhost' ? 'はい':'いいえ',
              (location.protocol==='https:'||location.hostname==='localhost')?'ok':'ng']);
+  rows.push(['マイクの許可', diagPerm ? '取得済み' : '未確認（下のボタンで確認）', diagPerm?'ok':'']);
   $('#diagTable').innerHTML = rows.map(r=>
     `<div class="diag-row"><span>${r[0]}</span><b class="${r[2]}">${escapeHtml(r[1])}</b></div>`).join('');
   let hint='';
@@ -1958,38 +1980,81 @@ function renderDiag(){
   $('#diagHint').innerHTML = hint;
   diagSay('','');
 }
-function diagMic(){
-  if(diagRec){ diagStop(); diagSay('',''); return; }
-  if(!SRC){ diagSay('このブラウザでは音声入力が使えません。','ng'); return; }
+/* iOSの「Safariで一度 拒否 を押すと二度と聞かれない」問題を切り分けるため、
+   まず getUserMedia で許可そのものを取りに行き、原因を特定してから認識を試す。 */
+const FIX_PERMISSION = `<b>マイクの許可が「拒否」で記憶されています。</b><br>
+一度「許可しない」を押すと、次から確認画面が出ません。下の手順で直せます。<br><br>
+<b>①</b> 画面下（または上）のアドレスバー左の <b>「ぁA」</b> をタップ<br>
+<b>②</b> <b>「Webサイトの設定」</b> をタップ<br>
+<b>③</b> <b>「マイク」→「許可」</b> を選ぶ<br>
+<b>④</b> 「完了」を押して、このページを再読み込み<br><br>
+それでも直らないときは、<b>設定 → Safari → カメラとマイク</b> を確認してください。<br>
+変わらない場合は、<b>iPhoneを再起動</b>すると反映されることがあります。`;
+
+const FIX_DICTATION = `<b>マイクは使えていますが、音声認識が反応していません。</b><br><br>
+<b>①</b> 設定 → 一般 → キーボード → <b>音声入力</b> がオンか確認<br>
+<b>②</b> 設定 → スクリーンタイム → コンテンツとプライバシーの制限 → <b>マイク</b> が「変更を許可」になっているか確認<br>
+<b>③</b> このゲームの設定で「効果音」と「お手本の音声」を<b>消す</b>にして再挑戦<br>
+<b>④</b> それでもだめなら、キーボード入力でも遊べます`;
+
+async function diagMic(){
+  if(diagRec || diagBusy){ diagStop(); diagSay('',''); return; }
+  if(!SRC){ diagSay('このブラウザでは音声入力が使えません。iPhone は Safari、Android は Chrome でお試しください。','ng'); return; }
+
+  const b=$('#btnDiagMic');
+  diagBusy = true;
+  if(b){ b.classList.add('rec'); b.textContent='確認中…'; }
   AUDIO.release();
   if(window.speechSynthesis){ try{ speechSynthesis.cancel(); }catch(e){} }
-  const b=$('#btnDiagMic'); if(b){ b.classList.add('rec'); b.textContent='● 聞いています（押すと停止）'; }
-  diagSay('🎙️ どうぞ ── 何か英語で話してみてください','');
-  let r; try{ r=new SRC(); }catch(e){ diagSay('マイクを起動できませんでした。','ng'); diagStop(); return; }
+
+  /* ── 第1段階：マイクの許可そのものを取りに行く ── */
+  diagSay('マイクの許可を確認しています…','');
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    diagSay('<b>この環境ではマイクを使えません。</b><br>https のページを、Safari（iPhone）または Chrome（Android）で開いてください。','ng');
+    diagBusy=false; diagStop(); return;
+  }
+  let stream=null;
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({audio:true});
+  }catch(err){
+    const n = (err && err.name) || '';
+    if(n==='NotAllowedError' || n==='SecurityError' || n==='PermissionDeniedError'){
+      diagSay(FIX_PERMISSION,'ng');
+    } else if(n==='NotFoundError' || n==='DevicesNotFoundError'){
+      diagSay('<b>マイクが見つかりません。</b><br>イヤホンを抜いて、もう一度お試しください。','ng');
+    } else if(n==='NotReadableError' || n==='TrackStartError'){
+      diagSay('<b>ほかのアプリがマイクを使用中です。</b><br>通話アプリや録音アプリを終了してから、もう一度お試しください。','ng');
+    } else {
+      diagSay('<b>マイクを起動できませんでした。</b>（'+escapeHtml(n||'不明')+'）<br>ページを再読み込みしてお試しください。','ng');
+    }
+    diagBusy=false; diagStop(); return;
+  }
+  /* 許可は取れた。認識とオーディオセッションが競合するので即座に手放す */
+  try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+  diagPerm = true;
+
+  /* ── 第2段階：実際に聞き取れるか ── */
+  if(b){ b.textContent='● 聞いています（押すと停止）'; }
+  diagSay('✓ マイクの許可はOKです。<br>🎙️ 英語で <b>hello</b> と言ってみてください…','');
+  let r; try{ r=new SRC(); }catch(e){ diagSay('音声認識を起動できませんでした。','ng'); diagBusy=false; diagStop(); return; }
   r.lang='en-US'; r.continuous=true; r.interimResults=true; r.maxAlternatives=3;
   let heardSomething=false;
   r.onresult=e=>{
     const t=[]; for(let i=0;i<e.results.length;i++) t.push(e.results[i][0].transcript);
     const txt=t.join(' ').trim();
-    if(txt){ heardSomething=true; diagSay('✓ 聞こえました：<i>'+escapeHtml(txt)+'</i><br>マイクは正常に動いています。','ok'); }
+    if(txt){ heardSomething=true;
+      diagSay('✓ 聞こえました：<i>'+escapeHtml(txt)+'</i><br>マイクも音声認識も正常に動いています。','ok'); }
   };
   r.onerror=e=>{
-    if(e.error==='not-allowed'||e.error==='service-not-allowed')
-      diagSay('<b>マイクが許可されていません。</b><br>Safariのアドレスバー左の「ぁA」→ Webサイトの設定 → マイク → 許可、を確認してください。','ng');
-    else if(e.error==='audio-capture')
-      diagSay('<b>マイクが見つかりません。</b>','ng');
-    else if(e.error==='no-speech' && !heardSomething)
-      diagSay('声が届いていません。もう少し大きな声で、もう一度お試しください。','ng');
-    diagStop();
+    if(e.error==='not-allowed'||e.error==='service-not-allowed'){ diagSay(FIX_PERMISSION,'ng'); diagBusy=false; diagStop(); }
+    else if(e.error==='audio-capture'){ diagSay('<b>マイクが見つかりません。</b>','ng'); diagBusy=false; diagStop(); }
   };
   r.onend=()=>{ if(diagRec && !heardSomething){ try{ r.start(); }catch(e){} } };
   diagRec=r;
-  try{ r.start(); }catch(e){ diagSay('マイクを起動できませんでした。','ng'); diagStop(); return; }
+  try{ r.start(); }catch(e){ diagSay('音声認識を起動できませんでした。','ng'); diagBusy=false; diagStop(); return; }
   diagTimer=setTimeout(()=>{
-    if(!heardSomething){
-      diagSay('<b>反応がありませんでした。</b><br>①「設定 → 一般 → キーボード → 音声入力」がオンか確認<br>②設定画面で「効果音」と「お手本の音声」を<b>消す</b>にして再挑戦<br>③それでもだめならキーボード入力をお使いください','ng');
-    }
-    diagStop();
+    if(!heardSomething) diagSay(FIX_DICTATION,'ng');
+    diagBusy=false; diagStop();
   }, 9000);
 }
 
