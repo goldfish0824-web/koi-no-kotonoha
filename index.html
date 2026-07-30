@@ -384,6 +384,46 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .wl-status.ng{color:var(--sunset);background:rgba(255,176,124,.11)}
 .wl-empty{text-align:center;color:var(--dim);font-size:13.5px;padding:30px 10px;line-height:2}
 
+/* ---------- タイムアタック ---------- */
+.ta-best{background:var(--dusk);border:1px solid rgba(84,64,111,.55);border-radius:18px;
+  padding:16px 18px 14px;margin-bottom:16px}
+.ta-best-cap{font-size:11.5px;color:var(--dim);letter-spacing:.04em}
+.ta-best-num{display:flex;align-items:baseline;gap:5px;margin-top:2px}
+.ta-best-num b{font-family:var(--en);font-size:38px;font-weight:800;color:var(--gold);line-height:1}
+.ta-best-num span{font-size:12.5px;color:var(--muted)}
+.ta-graph{margin-top:12px;min-height:56px}
+.ta-graph svg{display:block;width:100%;height:56px;overflow:visible}
+.ta-graph .empty{font-size:11.5px;color:var(--dim);padding:18px 0;text-align:center}
+
+.ta-opt{display:flex;flex-direction:column;gap:2px}
+.ta-opt-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;
+  border-bottom:1px dashed rgba(84,64,111,.5)}
+.ta-opt-row:last-child{border-bottom:0}
+.ta-opt-label{font-size:14px}
+
+.ta-last{background:linear-gradient(135deg,rgba(240,104,151,.16),rgba(255,176,124,.10));
+  border:1px solid rgba(240,104,151,.4);border-radius:18px;padding:15px 18px;margin-bottom:14px}
+.ta-last-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.ta-last-num{display:flex;align-items:baseline;gap:5px}
+.ta-last-num b{font-family:var(--en);font-size:34px;font-weight:800;color:var(--cream);line-height:1}
+.ta-last-num span{font-size:12px;color:var(--muted)}
+.ta-newrec{font-size:11.5px;font-weight:700;color:#3A0E22;letter-spacing:.06em;
+  background:linear-gradient(135deg,var(--gold),var(--sunset));padding:4px 10px;border-radius:999px;
+  animation:recPop .5s cubic-bezier(.2,1.4,.4,1)}
+@keyframes recPop{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
+.ta-last-sub{display:flex;gap:16px;margin-top:9px;font-size:11.5px;color:var(--muted)}
+.ta-last-sub b{font-family:var(--en);color:var(--cream);font-size:14px;font-weight:700}
+
+/* プレイ中のタイムアタック表示 */
+.play.ta-on .hearts{display:none}
+#taHud{display:none;align-items:baseline;gap:9px}
+.play-top.ta-on #taHud{display:flex}
+.play-top.ta-on .hearts{display:none}
+#taHud .n{font-family:var(--en);font-size:26px;font-weight:800;color:var(--gold);line-height:1}
+#taHud .u{font-size:11px;color:var(--muted)}
+#taHud .cb{font-size:11.5px;color:var(--blush);font-weight:700}
+#btnPass{margin-left:14px;color:var(--dim)}
+
 /* ---------- マイク診断 ---------- */
 /* ---------- クレジット ---------- */
 .credit{margin-top:18px;text-align:center;font-size:11px;color:var(--dim);
@@ -469,6 +509,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
       <div class="top-actions">
         <button class="mini-link" id="btnSettings">設定</button>
         <button class="mini-link" id="btnReviewTop">苦手のことば</button>
+        <button class="mini-link" id="btnTaTop">タイムアタック</button>
         <button class="mini-link" id="btnDiagTop">マイクの確認</button>
         <button class="mini-link" id="btnReset">記録を消す</button>
       </div>
@@ -493,6 +534,49 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
         <button class="mini-link" id="btnReviewSel">苦手のことば</button>
         <button class="mini-link" id="btnTitle">タイトルへ</button>
       </div>
+    </div>
+  </section>
+
+  <!-- TIME ATTACK -->
+  <section class="screen" id="ta">
+    <div class="wrap">
+      <div class="head">
+        <h1>タイムアタック</h1>
+        <button class="mini-link" id="btnTaBack">もどる</button>
+      </div>
+
+      <div id="taLast"></div>
+
+      <div class="ta-best">
+        <div class="ta-best-cap">この条件の自己ベスト</div>
+        <div class="ta-best-num"><b id="taBestNum">—</b><span>語</span></div>
+        <div class="ta-graph" id="taGraph"></div>
+      </div>
+
+      <div class="ta-opt">
+        <div class="ta-opt-row">
+          <span class="ta-opt-label">じかん</span>
+          <div class="seg" id="taSecSeg">
+            <button data-v="30">30秒</button><button data-v="60">60秒</button><button data-v="120">120秒</button>
+          </div>
+        </div>
+        <div class="ta-opt-row">
+          <span class="ta-opt-label">出題</span>
+          <div class="seg" id="taRangeSeg">
+            <button data-v="all">ぜんぶ</button><button data-v="weak">苦手</button><button data-v="ch">章ごと</button>
+          </div>
+        </div>
+        <div class="ta-opt-row" id="taChRow" style="display:none">
+          <span class="ta-opt-label">章</span>
+          <div class="seg" id="taChSeg">
+            <button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button>
+            <button data-v="4">4</button><button data-v="5">5</button><button data-v="6">6</button>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn primary block" id="btnTaStart" style="margin-top:16px;font-size:17px;padding:18px">スタート</button>
+      <div class="footer-note">制限時間内に、何語 言えるか。ハートは減りません。<br>言えなかったことばは「苦手のことば」に記録されます。</div>
     </div>
   </section>
 
@@ -549,8 +633,9 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
   <!-- PLAY -->
   <section class="screen" id="play">
-    <div class="play-top">
+    <div class="play-top" id="playTop">
       <div class="hearts" id="hearts"></div>
+      <div id="taHud"><span class="n" id="taCount">0</span><span class="u">語</span><span class="cb" id="taCombo"></span></div>
       <div class="spacer"></div>
       <div style="text-align:right">
         <div class="chap-tag" id="chapTag"></div>
@@ -586,7 +671,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
         <div class="type-wrap" id="typeWrap">
           <input id="typein" type="text" placeholder="ここに英単語を入力して Enter" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
         </div>
-        <div class="mode-toggle"><button id="btnMode">キーボードで入力する</button></div>
+        <div class="mode-toggle"><button id="btnMode">キーボードで入力する</button><button id="btnPass" style="display:none">パス ▶</button></div>
       </div>
     </div>
   </section>
@@ -651,6 +736,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
       <p><span class="k">8.</span> 「苦手のことば」では、🎤 を押すとその場で発音をチェックできます。正しく言えたら、リストから自動で消えます。</p>
       <p class="muted" style="font-size:12px">うまく聞き取ってもらえないときは、設定の「発音判定」を<b>あまい</b>にしてみてください。</p>
       <p class="muted" style="font-size:12px">マイクがまったく反応しないときは、タイトル画面の「マイクの確認」をお試しください。iPhone では「設定 → 一般 → キーボード → 音声入力」がオンである必要があります。</p>
+      <p style="margin-top:14px"><span class="k">★</span> <b>タイムアタック</b>：制限時間内に何語 言えるかに挑戦するモードです。ハートは減らず、最後まで走り切れます。自己ベストと記録の変化がグラフで残ります。</p>
       <p class="muted" style="font-size:11.5px;margin-top:14px;padding-top:12px;border-top:1px dashed rgba(84,64,111,.5)">
         「恋のことのは」© 2026 Tomoaki Kito<br>
         <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.ja" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">CC BY-NC-SA 4.0</a> のもとで公開しています。
@@ -848,6 +934,7 @@ function show(id){ $$('.screen').forEach(s=>s.classList.toggle('on', s.id===id))
   window.scrollTo(0,0);
   try{ if(id!=='review') chkStop(true); }catch(e){}
   try{ if(id!=='diag') diagStop(); }catch(e){}
+  try{ if(id!=='play' && G.ta && !G.ta.over) taAbort(); }catch(e){}
   try{ updateReviewLinks(); }catch(e){} }
 function setSky(mood){ $('#sky').className = 'sky' + (mood?(' '+mood):''); }
 
@@ -1428,7 +1515,8 @@ const G = {
   stage:1, review:false, queue:[], i:0, word:null, answers:[],
   hp:MAXHP, combo:0, maxCombo:0, right:0, tries:0, missed:[],
   phase:'wave', momentHp:3, momentTotal:3, nearCount:0,
-  t0:0, dur:0, raf:0, running:false, locked:false, requeued:null
+  t0:0, dur:0, raf:0, running:false, locked:false, requeued:null,
+  ta:null
 };
 const durationFor = s => Math.max(7.5, 14 - (s-1)*.5)*1000*SPEED[CFG.speed];
 const unlocked = n => n===1 || !!route().cleared[n-1];
@@ -1482,10 +1570,12 @@ function chapterProgress(){
 async function nextWord(){
   G.locked=false; G.nearCount=0; clearGhost();
   $('#card').classList.remove('right');
-  gateUntil = Date.now()+350;
-  if(G.hp<=0) return endChapter(false);
+  gateUntil = Date.now()+ (G.ta?180:350);
+  if(G.ta && G.ta.over) return;
+  if(!G.ta && G.hp<=0) return endChapter(false);
+  if(G.ta && G.i>=G.queue.length) taRefill();
 
-  if(G.phase==='wave' && G.i>=G.queue.length){
+  if(!G.ta && G.phase==='wave' && G.i>=G.queue.length){
     if(G.review) return endChapter(true);
     G.phase='moment'; G.locked=true; stopRec();
     await momentIntro(STAGES[G.stage-1]);
@@ -1509,24 +1599,33 @@ async function nextWord(){
   $('#cardPhrase').innerHTML = `${escapeHtml(row[1]?row[1]+' ':'')}<span style="color:var(--dim)">▁▁▁</span>${escapeHtml(row[2]?' '+row[2]:'')}`;
   $('#cardJp').textContent = CFG.jp==='on' ? row[3] : '';
 
-  setPairGap($('#stagePair'), G.phase==='moment' ? .12 : (1 - chapterProgress()*.75));
+  setPairGap($('#stagePair'), G.ta ? Math.max(.06, 1-Math.min(1,G.right/25)*.9)
+                                    : (G.phase==='moment' ? .12 : (1 - chapterProgress()*.75)));
 
-  if(G.phase==='moment'){
+  if(G.ta){ taHud(); }
+  else if(G.phase==='moment'){
     $('#prog').innerHTML = `♡ ${'●'.repeat(G.momentHp)}<span style="opacity:.3">${'●'.repeat(G.momentTotal-G.momentHp)}</span>`;
   } else {
     $('#prog').textContent = `${Math.min(G.i+1,G.queue.length)} / ${G.queue.length}`;
   }
-  renderHearts();
+  if(!G.ta) renderHearts();
   if(CFG.input==='type'){ $('#typein').value=''; $('#typein').focus(); }
 
-  $('#timeFill').style.width='100%'; $('#timeTrack').classList.remove('crit'); $('#timePct').textContent='100%';
-  G.dur = durationFor(G.stage) * (G.phase==='moment'?.85:1);
+  if(G.ta){ G.dur = TA_WORD_LIMIT; taClock(); }
+  else {
+    $('#timeFill').style.width='100%'; $('#timeTrack').classList.remove('crit'); $('#timePct').textContent='100%';
+    G.dur = durationFor(G.stage) * (G.phase==='moment'?.85:1);
+  }
   G.t0 = performance.now();
   cancelAnimationFrame(G.raf); G.raf = requestAnimationFrame(tick);
 }
 
 function tick(now){
   if(!G.running||G.locked) return;
+  if(G.ta){    /* 全体の時計は taClock。ここは1語ごとの上限だけ見る */
+    if(now-G.t0 >= G.dur) return onFail();
+    G.raf = requestAnimationFrame(tick); return;
+  }
   const p = Math.min(1,(now-G.t0)/G.dur);
   $('#timeFill').style.width = ((1-p)*100)+'%';
   $('#timePct').textContent = Math.max(0,Math.round((1-p)*100))+'%';
@@ -1579,8 +1678,14 @@ function onCorrect(){
   $('#arena').classList.add('love');
   setTimeout(()=>$('#arena').classList.remove('love'), 900);
   if(big) SFX.flutter(); else SFX.correct();
-  say(ans);
-  if(G.review){ const k=SAVE.weak.indexOf(G.word[0]); if(k>=0){ SAVE.weak.splice(k,1); saveGame(); } }
+  if(!G.ta) say(ans);          /* 速さ勝負なので読み上げで時間を食わない */
+  if(G.review||G.ta){ const k=SAVE.weak.indexOf(G.word[0]); if(k>=0){ SAVE.weak.splice(k,1); saveGame(); } }
+  if(G.ta){
+    G.i++; taHud();
+    setPairGap($('#stagePair'), Math.max(.06, 1-Math.min(1,G.right/25)*.9));
+    setTimeout(nextWord, 340);
+    return;
+  }
   if(G.phase==='moment'){ G.momentHp--; setPairGap($('#stagePair'), .08); }
   else { G.i++; setPairGap($('#stagePair'), 1 - chapterProgress()*.75); }
   setTimeout(nextWord, 940);
@@ -1592,16 +1697,18 @@ function onFail(){
   G.combo=0; G.tries++; updateCombo();
   const ans=G.answers[0];
   SFX.miss();
-  G.hp--; renderHearts(G.hp);
+  if(!G.ta){ G.hp--; renderHearts(G.hp); } else taHud();
+  const taFast = !!G.ta;
   charFx('fail');
   $('#arena').classList.add('warn');
   setTimeout(()=>$('#arena').classList.remove('warn'),600);
   fitBlank(ans.length+1);
   $('#cardBlank').innerHTML = `<span style="color:#FF7A9C">${ans.toUpperCase()}</span>`;
   setHeard('—','');
-  say(ans);
+  if(!taFast) say(ans);
   if(!G.missed.some(m=>m[0]===G.word[0])) G.missed.push(G.word);
   if(!SAVE.weak.includes(G.word[0])){ SAVE.weak.push(G.word[0]); saveGame(); }
+  if(G.ta){ G.i++; setTimeout(nextWord, 620); return; }
   if(G.phase==='wave'){
     G.i++;
     if(!G.requeued.has(G.word[0])){ G.requeued.add(G.word[0]); G.queue.push(G.word); }
@@ -1614,6 +1721,169 @@ async function momentIntro(st){
     no:`第${G.stage}章`, title:st.moment.title, mood:st.mood,
     beats:[{who:'', text:st.moment.line}], cta:'ことばを届ける', quick:true
   });
+}
+
+/* =========================================================================
+   タイムアタック
+   ========================================================================= */
+const TA_SEC = [30,60,120];
+const TA_WORD_LIMIT = 7000;          /* 1語で詰まったら自動で次へ */
+let taCfg = { sec:60, range:'all', ch:1 };
+
+function taKey(){
+  const m = CFG.input==='type' ? 'type' : 'voice';
+  const r = taCfg.range==='ch' ? ('ch'+taCfg.ch) : taCfg.range;
+  return m+'-'+taCfg.sec+'-'+r;
+}
+function taStore(){
+  if(!SAVE.ta) SAVE.ta = { best:{}, hist:[] };
+  if(!SAVE.ta.best) SAVE.ta.best={};
+  if(!SAVE.ta.hist) SAVE.ta.hist=[];
+  return SAVE.ta;
+}
+function taRows(){
+  if(taCfg.range==='weak'){ const w=weakRows(); return w.length?w:W.slice(); }
+  if(taCfg.range==='ch')  return (POOL[taCfg.ch]||W).slice();
+  return W.slice();
+}
+
+/* 出題は尽きない。使い切ったら切り直す。 */
+function taRefill(){
+  G.queue = shuffle(taRows());
+  G.i = 0;
+}
+
+function startTA(){
+  const rows = taRows();
+  if(!rows.length){ toast('出題できることばがありません。'); return; }
+  G.stage=1; G.review=false; G.hp=99; G.combo=0; G.maxCombo=0; G.right=0; G.tries=0;
+  G.missed=[]; G.requeued=new Set(); G.phase='wave';
+  G.running=true; G.locked=false; G.nearCount=0;
+  G.ta = { sec:taCfg.sec, key:taKey(), endAt:performance.now()+taCfg.sec*1000, timer:0, over:false };
+  setPoolWords(new Set(rows.flatMap(r=>r[4].split(',')).map(a=>norm(a)).filter(Boolean)));
+  taRefill();
+  setSky('ch2');
+  $('#chapTag').textContent='TIME ATTACK';
+  $('#playTop').classList.add('ta-on');
+  $('#btnPass').style.display='';
+  $('#taCount').textContent='0'; $('#taCombo').textContent='';
+  renderPair($('#stagePair'), 1);
+  $('#stagePair').appendChild(Object.assign(document.createElement('div'),{className:'combo-tag',id:'comboTag'}));
+  $('#stagePair').appendChild(Object.assign(document.createElement('div'),{className:'fx',id:'fx'}));
+  show('play');
+  if(CFG.input==='voice') startRec(); else setMode('type');
+  clearInterval(G.ta.timer);
+  G.ta.timer = setInterval(taClock, 100);
+  nextWord();
+}
+
+/* 全体の残り時間。単語ごとのロック中も止めない。 */
+function taClock(){
+  if(!G.ta || G.ta.over) return;
+  const left = G.ta.endAt - performance.now();
+  if(left<=0){ endTA(); return; }
+  const p = left/(G.ta.sec*1000);
+  $('#timeFill').style.width = (p*100)+'%';
+  $('#timePct').textContent = (left/1000).toFixed(1)+'秒';
+  $('#timeTrack').classList.toggle('crit', left<10000);
+}
+
+function taHud(){
+  $('#taCount').textContent = G.right;
+  $('#taCombo').textContent = G.combo>=3 ? ('×'+G.combo) : '';
+}
+
+function endTA(){
+  if(!G.ta || G.ta.over) return;
+  G.ta.over = true; G.running=false; G.locked=true;
+  clearInterval(G.ta.timer); cancelAnimationFrame(G.raf); stopRec();
+  $('#timeFill').style.width='0%'; $('#timePct').textContent='0.0秒';
+  const st = taStore();
+  const key = G.ta.key;
+  const prev = st.best[key] || 0;
+  const words = G.right;
+  const isNew = words > prev;
+  if(isNew) st.best[key] = words;
+  st.hist.push({ t:Date.now(), key, words, combo:G.maxCombo,
+                 acc: G.tries ? Math.round(G.right/G.tries*100) : 0 });
+  if(st.hist.length>120) st.hist = st.hist.slice(-120);
+  saveGame();
+  SFX.flutter();
+  const ta = G.ta; G.ta=null;
+  $('#playTop').classList.remove('ta-on');
+  $('#btnPass').style.display='none';
+  renderTA({ words, isNew, prev, combo:G.maxCombo,
+             acc: G.tries?Math.round(G.right/G.tries*100):0, sec:ta.sec });
+  setSky(''); show('ta');
+}
+
+/* 途中でやめたとき。記録は残さず、時計も必ず止める。 */
+function taAbort(){
+  if(!G.ta) return;
+  clearInterval(G.ta.timer);
+  G.ta=null; G.running=false; G.locked=true;
+  cancelAnimationFrame(G.raf); stopRec();
+  $('#playTop').classList.remove('ta-on');
+  $('#btnPass').style.display='none';
+}
+
+/* 直近の記録グラフ（同じ条件のものだけ） */
+function taGraphSVG(key){
+  const st = taStore();
+  const rows = st.hist.filter(h=>h.key===key).slice(-20);
+  if(rows.length<2) return '<div class="empty">2回プレイすると、記録の変化が出ます。</div>';
+  const vals = rows.map(r=>r.words);
+  const max = Math.max(...vals), min = Math.min(...vals);
+  const span = Math.max(1, max-min);
+  const W_=100, H_=56, pad=6;
+  const pt = (v,i)=>[ (rows.length===1?W_/2:(i/(rows.length-1))*W_),
+                      pad + (1-(v-min)/span)*(H_-pad*2) ];
+  const pts = vals.map(pt);
+  const line = pts.map((q,i)=>(i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)).join(' ');
+  const area = line+` L${W_} ${H_} L0 ${H_} Z`;
+  const last = pts[pts.length-1];
+  return `<svg viewBox="0 0 ${W_} ${H_}" preserveAspectRatio="none" aria-label="記録の推移">
+    <defs><linearGradient id="tag" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--gold)" stop-opacity=".30"/>
+      <stop offset="100%" stop-color="var(--gold)" stop-opacity="0"/></linearGradient></defs>
+    <path d="${area}" fill="url(#tag)"/>
+    <path d="${line}" fill="none" stroke="var(--gold)" stroke-width="1.6"
+      stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.6" fill="var(--gold)"
+      vector-effect="non-scaling-stroke"/>
+  </svg>`;
+}
+
+function renderTA(last){
+  const st = taStore(), key = taKey();
+  /* セグメントの選択状態 */
+  $$('#taSecSeg button').forEach(b=>b.classList.toggle('on', +b.dataset.v===taCfg.sec));
+  $$('#taRangeSeg button').forEach(b=>b.classList.toggle('on', b.dataset.v===taCfg.range));
+  $$('#taChSeg button').forEach(b=>b.classList.toggle('on', +b.dataset.v===taCfg.ch));
+  $('#taChRow').style.display = taCfg.range==='ch' ? '' : 'none';
+
+  $('#taBestNum').textContent = st.best[key] ? st.best[key] : '—';
+  $('#taGraph').innerHTML = taGraphSVG(key);
+
+  const box = $('#taLast');
+  if(last){
+    box.innerHTML = `<div class="ta-last">
+      <div class="ta-last-top">
+        <div class="ta-last-num"><b>${last.words}</b><span>語 / ${last.sec}秒</span></div>
+        ${last.isNew ? '<span class="ta-newrec">★ 自己ベスト更新</span>'
+                     : (last.prev?`<span style="font-size:11.5px;color:var(--muted)">ベストまで あと ${Math.max(1,last.prev-last.words+1)} 語</span>`:'')}
+      </div>
+      <div class="ta-last-sub">
+        <span>最高コンボ <b>×${last.combo}</b></span>
+        <span>正答率 <b>${last.acc}%</b></span>
+        <span>1語あたり <b>${last.words?(last.sec/last.words).toFixed(1):'—'}</b>秒</span>
+      </div>
+    </div>`;
+    $('#btnTaStart').textContent='もう一度';
+  } else {
+    box.innerHTML='';
+    $('#btnTaStart').textContent='スタート';
+  }
 }
 
 /* ---------- debrief ---------- */
@@ -2072,6 +2342,16 @@ function wire(){
     await saveGame(); await saveCfg(); setJudgeLevel(CFG.judge);
     toast('記録を消しました。'); renderSelect(); updateReviewLinks();
   };
+  $('#btnTaTop').onclick = ()=>{ AUDIO.get(); renderTA(null); setSky(''); show('ta'); };
+  $('#btnTaBack').onclick = ()=>{ setSky(''); show('title'); };
+  $('#btnTaStart').onclick = ()=>{ AUDIO.get(); startTA(); };
+  $('#taSecSeg').onclick = e=>{ const b=e.target.closest('button'); if(!b) return;
+    taCfg.sec=+b.dataset.v; renderTA(null); };
+  $('#taRangeSeg').onclick = e=>{ const b=e.target.closest('button'); if(!b) return;
+    taCfg.range=b.dataset.v; renderTA(null); };
+  $('#taChSeg').onclick = e=>{ const b=e.target.closest('button'); if(!b) return;
+    taCfg.ch=+b.dataset.v; renderTA(null); };
+  $('#btnPass').onclick = ()=>{ if(G.ta && !G.locked) onFail(); };
   $('#btnDiagTop').onclick = ()=>{ AUDIO.get(); renderDiag(); setSky(''); show('diag'); };
   $('#btnDiagBack').onclick = ()=>{ diagStop(); setSky(''); show('title'); };
   $('#btnDiagMic').onclick = ()=> diagMic();
@@ -2116,6 +2396,10 @@ function wire(){
     else { setHeard(v+'　…ちがうみたい','near'); }
   });
   $('#btnRetreat').onclick = ()=>{
+    if(G.ta){
+      if(!confirm('タイムアタックをやめますか？（この回の記録は残りません）')) return;
+      taAbort(); renderTA(null); setSky(''); show('ta'); return;
+    }
     if(!confirm('この章をやめて、章えらびにもどりますか？')) return;
     G.running=false; cancelAnimationFrame(G.raf); stopRec();
     setSky(''); renderSelect(); show('select');
