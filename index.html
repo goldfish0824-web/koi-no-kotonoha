@@ -1983,13 +1983,17 @@ async function playEnding(rank){
   setSky('ch6');
   const F=$('#endFigure'); renderPair(F,0); setPairGap(F,0);
   const beats = CH().ending;
-  $('#endTitle').textContent = CH().endTitle;
-  $('#endTitle').classList.add('in');
+  const titleEl=$('#endTitle');
+  titleEl.textContent = CH().endTitle;
+  titleEl.classList.remove('in'); void titleEl.offsetWidth; titleEl.classList.add('in');
   let i=0;
   const nameEl=$('#endName'), textEl=$('#endText'), nextEl=$('#endNext'), contEl=$('#endCont');
+  /* 2周目に備えてボタンの状態を戻す */
+  nextEl.style.display='flex'; contEl.style.display='none'; contEl.onclick=null;
   function paint(){ const b=beats[i]; nameEl.textContent=b.who||''; textEl.textContent=b.text;
     cineBeat(F, b.who===CH().name); SFX.tap(); }
   paint();
+  show('ending');          /* ← これが抜けていたため、告白のあと画面が切り替わらなかった */
   await new Promise(res=>{
     function adv(){ i++; if(i<beats.length){ paint(); }
       else { nextEl.style.display='none'; contEl.style.display='block';
