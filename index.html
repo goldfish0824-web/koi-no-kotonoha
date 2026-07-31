@@ -463,6 +463,10 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   border-bottom:1px dashed rgba(84,64,111,.5)}
 .set-row:last-of-type{border-bottom:0}
 .set-label{font-size:14px}
+.set-ctl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.try-say{background:rgba(255,255,255,.05);border:1px solid var(--haze);color:var(--ink);
+  border-radius:11px;padding:7px 11px;font-size:12px;cursor:pointer;white-space:nowrap;font-family:inherit}
+.try-say:active{transform:scale(.96)}
 .set-label small{display:block;color:var(--dim);font-size:11px;margin-top:2px;line-height:1.4}
 .seg{display:inline-flex;background:rgba(255,255,255,.05);border:1px solid var(--haze);border-radius:11px;overflow:hidden}
 .seg button{padding:8px 12px;font-size:12.5px;color:var(--muted)}
@@ -933,11 +937,15 @@ function notice(html){ const n=$('#notice'); n.innerHTML=html; n.className='noti
 
 function show(id){ $$('.screen').forEach(s=>s.classList.toggle('on', s.id===id));
   window.scrollTo(0,0);
+  try{ if(id==='result') BGM.scene('result');
+       else if(id==='ending') BGM.scene('ending');
+       else BGM.refresh(); }catch(e){}
   try{ if(id!=='review') chkStop(true); }catch(e){}
   try{ if(id!=='diag') diagStop(); }catch(e){}
   try{ if(id!=='play' && G.ta && !G.ta.over) taAbort(); }catch(e){}
   try{ updateReviewLinks(); }catch(e){} }
-function setSky(mood){ $('#sky').className = 'sky' + (mood?(' '+mood):''); }
+function setSky(mood){ $('#sky').className = 'sky' + (mood?(' '+mood):'');
+  try{ BGM.mood(mood); }catch(e){} }
 
 /* ---------- storage (same abstraction as the original) ---------- */
 const Store = (() => {
@@ -952,7 +960,7 @@ const Store = (() => {
       if(ls){try{ls.setItem(k,v);return;}catch(e){}} mem[k]=v; }
   };
 })();
-const DEF = { input:'voice', speed:'normal', dots:'on', jp:'on', tts:'on', sfx:'on', judge:'soft', count:'20' };
+const DEF = { input:'voice', speed:'normal', dots:'on', jp:'on', tts:'on', bgm:'on', sfx:'on', story:'on', judge:'soft', count:'20' };
 let CFG = { ...DEF };
 let SAVE = { routes:{}, weak:[], cur:'haruto' };
 /* いま選んでいるキャラ（または指定キャラ）の進行データ */
@@ -1391,11 +1399,278 @@ const AUDIO = (() => { let ac=null, susT=0; return {
   /* iOS では AudioContext が running の間、音声認識がマイクを取得できない。
      認識を始める前に必ずオーディオセッションを手放す。 */
   release(){ clearTimeout(susT); susT=0;
+    if(audioHold) return;                       /* BGM 再生中は手放さない */
     if(ac && ac.state==='running'){ try{ ac.suspend(); }catch(e){} } },
   /* 効果音を鳴らし終えたら自動で手放す */
   autoRelease(ms){ clearTimeout(susT);
-    susT=setTimeout(()=>{ if(ac && ac.state==='running'){ try{ ac.suspend(); }catch(e){} } }, ms||800); }
+    if(audioHold) return;
+    susT=setTimeout(()=>{ if(audioHold) return;
+      if(ac && ac.state==='running'){ try{ ac.suspend(); }catch(e){} } }, ms||800); }
 }; })();
+
+/* =========================================================================
+   BGM ── 章ごとに情景を変える環境音楽
+
+   旋律は前に出さない。パッド（持続和音）・アルペジオ・低音の三層だけで、
+   その章の空気をつくる。章が変わるとき和音とフィルターがゆっくり移り変わり、
+   曲が切り替わったというより「光の色が変わった」ように聞こえるようにする。
+
+   注意：iOS は AudioContext が鳴っている間、音声認識がマイクを取得できない。
+   そのため「iOS かつ 声入力かつ プレイ中」のときだけ BGM を伏せる。
+   ========================================================================= */
+let audioHold = false;   /* BGM が鳴っている間は AudioContext を手放さない */
+
+const BGM = (() => {
+  let a = null, master = null, conv = null, wet = null;
+  let padGain = null, padVoices = [], bassOsc = null, bassGain = null;
+  let arpGain = null, arpFilt = null, rainGain = null;
+  let built = false, cur = '', playing = false;
+  let schedT = 0, nextT = 0, stepI = 0;
+
+  const nf = m => 440 * Math.pow(2, (m - 69) / 12);
+
+  /* -1 は休符。16ステップ＝1小節ぶん */
+  const THEMES = {
+    /* タイトル・章えらび。何も起きていない、やわらかい時間 */
+    menu: { bpm: 56, wave: 'triangle', cut: 1500, bell: .18, pad: .052, arp: .050, rev: .55, rain: 0,
+      chord: [53, 57, 60, 67], bass: 41, scale: [65, 67, 69, 72, 74, 77],
+      pat: [0, 2, 4, 3, -1, 1, 3, 2, 4, 3, 2, 1, -1, 0, 2, -1] },
+
+    /* 第1章 出会い ── 四月の朝の光。澄んだベルで、軽く跳ねる */
+    ch1: { bpm: 66, wave: 'sine', cut: 3000, bell: .42, pad: .046, arp: .058, rev: .48, rain: 0,
+      chord: [60, 64, 67, 72], bass: 36, scale: [72, 74, 76, 79, 81, 84],
+      pat: [0, 2, 4, -1, 3, 5, -1, 2, 4, 2, 0, -1, 1, 3, -1, -1] },
+
+    /* 第2章 距離 ── 西日の図書室。木のように丸く、ゆったり */
+    ch2: { bpm: 54, wave: 'triangle', cut: 1250, bell: .12, pad: .062, arp: .048, rev: .62, rain: 0,
+      chord: [53, 57, 60, 64], bass: 41, scale: [65, 69, 72, 76, 79, 81],
+      pat: [0, -1, 2, -1, 4, -1, 3, -1, 2, -1, 1, -1, 0, -1, -1, -1] },
+
+    /* 第3章 すれ違い ── 雨の帰り道。曇らせて、下へ降りていく */
+    ch3: { bpm: 48, wave: 'sine', cut: 720, bell: .06, pad: .058, arp: .042, rev: .72, rain: .05,
+      chord: [57, 60, 64, 67], bass: 45, scale: [69, 71, 72, 76, 77, 81],
+      pat: [4, 3, 2, -1, 1, 0, -1, -1, 3, 2, 1, -1, 0, -1, -1, -1] },
+
+    /* 第4章 自覚 ── 屋上の夕暮れ。弦を混ぜて、揺れる */
+    ch4: { bpm: 60, wave: 'triangle', cut: 1450, bell: .16, pad: .066, arp: .050, rev: .60, rain: 0,
+      chord: [50, 57, 62, 65], bass: 38, scale: [74, 77, 79, 81, 84, 86],
+      pat: [0, 2, 1, 3, 2, 4, 3, -1, 4, 2, 3, 1, 2, 0, -1, -1] },
+
+    /* 第5章 決意 ── 前夜。歩幅が速くなる */
+    ch5: { bpm: 76, wave: 'triangle', cut: 2100, bell: .24, pad: .050, arp: .056, rev: .46, rain: 0,
+      chord: [55, 60, 62, 67], bass: 43, scale: [67, 69, 71, 74, 76, 79],
+      pat: [0, 1, 2, 3, 4, 3, 2, 1, 2, 3, 4, 5, 4, 3, 2, -1] },
+
+    /* 第6章 告白 ── 中庭の桜。いちばん広く、いちばん明るく */
+    ch6: { bpm: 70, wave: 'sine', cut: 3600, bell: .46, pad: .070, arp: .062, rev: .70, rain: 0,
+      chord: [60, 64, 67, 74], bass: 36, scale: [72, 74, 76, 79, 81, 84, 86],
+      pat: [0, 2, 4, 6, 5, 4, 2, -1, 3, 5, 6, 4, 2, 0, -1, -1] },
+
+    /* 結果画面。息をつく */
+    result: { bpm: 54, wave: 'triangle', cut: 1100, bell: .10, pad: .048, arp: .038, rev: .66, rain: 0,
+      chord: [53, 57, 60, 65], bass: 41, scale: [65, 69, 72, 76, 77, 81],
+      pat: [0, -1, 2, -1, 4, -1, -1, -1, 3, -1, 1, -1, 2, -1, -1, -1] },
+
+    /* エンディング。ぜんぶ解ける */
+    ending: { bpm: 64, wave: 'sine', cut: 3800, bell: .50, pad: .076, arp: .062, rev: .74, rain: 0,
+      chord: [60, 64, 67, 72], bass: 36, scale: [72, 76, 79, 81, 84, 88],
+      pat: [0, 2, 4, 5, 4, 2, 0, -1, 1, 3, 5, 3, 1, -1, -1, -1] }
+  };
+
+  const T = () => THEMES[cur] || THEMES.menu;
+
+  /* 部屋鳴り。長めで柔らかく取ると、電子音が「空気」に変わる */
+  function makeIR(sec, decay) {
+    const n = Math.floor(a.sampleRate * sec);
+    const b = a.createBuffer(2, n, a.sampleRate);
+    for (let c = 0; c < 2; c++) {
+      const d = b.getChannelData(c);
+      for (let i = 0; i < n; i++) {
+        const t = i / n;
+        d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, decay) * (1 - t * .2);
+      }
+    }
+    return b;
+  }
+  function noiseBuf(sec) {
+    const n = Math.floor(a.sampleRate * sec);
+    const b = a.createBuffer(1, n, a.sampleRate), d = b.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < n; i++) {
+      const w = Math.random() * 2 - 1;
+      last = (last + .03 * w) / 1.03;
+      d[i] = last * 3;
+    }
+    return b;
+  }
+  const slowLFO = (rate, depth, target) => {
+    const o = a.createOscillator(); o.type = 'sine'; o.frequency.value = rate;
+    const g = a.createGain(); g.gain.value = depth;
+    o.connect(g); g.connect(target); o.start();
+  };
+
+  function build() {
+    if (built) return true;
+    a = AUDIO.get();
+    if (!a) return false;
+
+    master = a.createGain(); master.gain.value = .0001;
+    master.connect(a.destination);
+
+    conv = a.createConvolver(); conv.buffer = makeIR(3.6, 2.2);
+    wet = a.createGain(); wet.gain.value = .55;
+    conv.connect(wet); wet.connect(master);
+
+    /* --- パッド：4声。章が変わると周波数だけを滑らせる --- */
+    padGain = a.createGain(); padGain.gain.value = .05;
+    const pf = a.createBiquadFilter(); pf.type = 'lowpass'; pf.frequency.value = 1200; pf.Q.value = .4;
+    padGain.connect(pf); pf.connect(master); pf.connect(conv);
+    slowLFO(.024, 180, pf.frequency);          /* 呼吸のような明暗 */
+    padVoices = THEMES.menu.chord.map((m, i) => {
+      const o1 = a.createOscillator(); o1.type = 'triangle'; o1.frequency.value = nf(m);
+      const o2 = a.createOscillator(); o2.type = 'sine';     o2.frequency.value = nf(m) * 1.0035;
+      const g = a.createGain(); g.gain.value = [.34, .24, .20, .13][i];
+      slowLFO(.013 + i * .007, g.gain.value * .5, g.gain);
+      o1.connect(g); o2.connect(g); g.connect(padGain);
+      o1.start(); o2.start();
+      return { o1, o2 };
+    });
+
+    /* --- 低音：一本だけ、遠くで支える --- */
+    bassGain = a.createGain(); bassGain.gain.value = .16;
+    const bf = a.createBiquadFilter(); bf.type = 'lowpass'; bf.frequency.value = 260;
+    bassGain.connect(bf); bf.connect(master);
+    bassOsc = a.createOscillator(); bassOsc.type = 'sine'; bassOsc.frequency.value = nf(41);
+    bassOsc.connect(bassGain); bassOsc.start();
+
+    /* --- アルペジオの出口 --- */
+    arpFilt = a.createBiquadFilter(); arpFilt.type = 'lowpass'; arpFilt.frequency.value = 1500; arpFilt.Q.value = .5;
+    arpGain = a.createGain(); arpGain.gain.value = .05;
+    arpGain.connect(arpFilt); arpFilt.connect(master); arpFilt.connect(conv);
+
+    /* --- 雨（第3章だけ立ち上げる） --- */
+    const rain = a.createBufferSource(); rain.buffer = noiseBuf(5); rain.loop = true;
+    const rf = a.createBiquadFilter(); rf.type = 'bandpass'; rf.frequency.value = 1400; rf.Q.value = .5;
+    rainGain = a.createGain(); rainGain.gain.value = .0001;
+    rain.connect(rf); rf.connect(rainGain); rainGain.connect(master); rainGain.connect(conv);
+    rain.start();
+    slowLFO(.05, 400, rf.frequency);
+
+    built = true;
+    return true;
+  }
+
+  /* 1音。倍音の混ぜ具合で、ピアノ寄りにもベル寄りにもなる */
+  function note(freq, t, dur, vol) {
+    const th = T();
+    const mk = (f, v, d, type) => {
+      const o = a.createOscillator(); o.type = type; o.frequency.value = f;
+      const g = a.createGain();
+      g.gain.setValueAtTime(.0001, t);
+      g.gain.exponentialRampToValueAtTime(Math.max(.0002, v), t + .012);
+      g.gain.exponentialRampToValueAtTime(.0001, t + d);
+      o.connect(g); g.connect(arpGain);
+      o.start(t); o.stop(t + d + .05);
+    };
+    mk(freq, vol, dur, th.wave);
+    if (th.bell > .02) {
+      mk(freq * 2, vol * th.bell, dur * .62, 'sine');
+      mk(freq * 3.01, vol * th.bell * .38, dur * .4, 'sine');
+    }
+  }
+
+  /* 先読みしながら音を並べる。setTimeout の揺れを currentTime で吸収する */
+  function scheduler() {
+    clearTimeout(schedT);
+    if (!playing || !built) return;
+    const th = T();
+    const stepDur = 60 / th.bpm / 2;                    /* 8分音符 */
+    const now = a.currentTime;
+    if (nextT < now) nextT = now + .06;
+    while (nextT < now + .75) {
+      const idx = th.pat[stepI % th.pat.length];
+      if (idx >= 0) {
+        const m = th.scale[Math.min(idx, th.scale.length - 1)];
+        const bar = Math.floor(stepI / th.pat.length);
+        const oct = (bar % 4 === 3 && idx <= 1) ? 12 : 0;   /* 4小節に一度だけ上でひらく */
+        const accent = (stepI % th.pat.length) === 0 ? 1.25 : 1;
+        note(nf(m + oct), nextT, stepDur * 5.5, th.arp * accent);
+      }
+      nextT += stepDur;
+      stepI++;
+    }
+    schedT = setTimeout(scheduler, 120);
+  }
+
+  /* 章が変わったら、和音とフィルターを滑らせて移す */
+  function applyTheme(fade) {
+    if (!built) return;
+    const th = T(), t = a.currentTime, k = fade ? .9 : .05;
+    th.chord.forEach((m, i) => {
+      const v = padVoices[i];
+      if (!v) return;
+      v.o1.frequency.setTargetAtTime(nf(m), t, k);
+      v.o2.frequency.setTargetAtTime(nf(m) * 1.0035, t, k);
+    });
+    bassOsc.frequency.setTargetAtTime(nf(th.bass), t, k);
+    arpFilt.frequency.setTargetAtTime(th.cut, t, k);
+    padGain.gain.setTargetAtTime(th.pad, t, k);
+    arpGain.gain.setTargetAtTime(th.arp, t, k);
+    wet.gain.setTargetAtTime(th.rev, t, k);
+    rainGain.gain.setTargetAtTime(Math.max(.0001, th.rain), t, k);
+  }
+
+  /* iOS だけ、声で遊んでいる間は伏せる（マイクを奪い合うため） */
+  function shouldPlay() {
+    if (CFG.bgm === 'off') return false;
+    /* G はこの下で定義されるので、初期化前に触れても落ちないようにする */
+    try { if (IS_IOS && CFG.input === 'voice' && G && G.running) return false; } catch (e) {}
+    return true;
+  }
+
+  function apply() {
+    const want = shouldPlay();
+    if (want && !built) {
+      if (!AUDIO.peek()) return;        /* 最初のタップまでは何も作らない */
+      if (!build()) return;
+    }
+    if (!built) return;
+    const t = a.currentTime;
+    if (want) {
+      AUDIO.get();                                   /* 眠っていたら起こす */
+      audioHold = true;
+      master.gain.setTargetAtTime(.85, t, .8);
+      if (!playing) { playing = true; nextT = 0; scheduler(); }
+    } else {
+      master.gain.setTargetAtTime(.0001, t, .35);
+      playing = false;
+      clearTimeout(schedT);
+      audioHold = false;
+    }
+  }
+
+  return {
+    /* setSky() から呼ばれる。'' はメニュー扱い */
+    mood(m) {
+      const key = THEMES[m] ? m : 'menu';
+      if (key === cur) { apply(); return; }
+      const first = !cur;
+      cur = key;
+      stepI = 0; nextT = 0;          /* 新しい章は小節の頭から */
+      applyTheme(!first);
+      apply();
+    },
+    /* result / ending 専用 */
+    scene(name) {
+      if (!THEMES[name] || name === cur) { apply(); return; }
+      cur = name; stepI = 0; nextT = 0; applyTheme(true); apply();
+    },
+    refresh() { apply(); },
+    /* 設定で切り替えたとき */
+    toggle() { apply(); }
+  };
+})();
+
 const SFX = (() => {
   function ctx(){ if(CFG.sfx!=='on') return null; return AUDIO.get(); }
   function bell(f, t0, dur, gain){ const a=ctx(); if(!a) return;
@@ -1420,6 +1695,23 @@ function pickVoice(){ if(!window.speechSynthesis) return;
   ttsVoice = vs.find(v=>/en[-_]US/i.test(v.lang)&&/female|Samantha|Victoria|Karen|Zira|Google US/i.test(v.name))
     || vs.find(v=>/en[-_]US/i.test(v.lang)) || vs.find(v=>/^en/i.test(v.lang)) || null; }
 if (window.speechSynthesis){ pickVoice(); try{ speechSynthesis.onvoiceschanged=pickVoice; }catch(e){} }
+
+/* iOS は放置すると読み上げエンジンが眠り、次の speak() を黙って無視する。
+   無音の発話を短い間隔で流し続けて、常に起きている状態を保つ。 */
+let ttsKeepTimer = 0;
+function ttsPing(){
+  if(!window.speechSynthesis) return;
+  try{
+    if(speechSynthesis.speaking || speechSynthesis.pending) return;   /* 読み上げ中は触らない */
+    const u=new SpeechSynthesisUtterance(' ');
+    u.volume=0; u.rate=2; u.lang='en-US';
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+function startTtsKeepAlive(){
+  if(!IS_IOS || ttsKeepTimer || !window.speechSynthesis) return;
+  ttsKeepTimer = setInterval(ttsPing, 6000);
+}
 function say(word, opts){
   const force = opts && opts.force;
   if(!word || !window.speechSynthesis) return;
@@ -1572,6 +1864,7 @@ function beginRun(opt){
   G.missed=[]; G.requeued=new Set();
   G.phase='wave'; G.momentHp=3; G.momentTotal=3; G.running=true; G.locked=false; G.nearCount=0;
   setPoolWords(new Set((opt.guard||opt.list).flatMap(r=>r[4].split(',')).map(a=>norm(a)).filter(Boolean)));
+  try{ BGM.refresh(); }catch(e){}
   const st = STAGES[G.stage-1];
   setSky(G.review ? 'ch1' : st.mood);
   $('#chapTag').textContent = G.review ? 'REVIEW' : st.s;
@@ -2014,6 +2307,8 @@ const CINE = (() => {
   return {
     play(cfg){
       return new Promise(resolve=>{
+        /* 「物語の演出：とばす」のときは会話を出さずに次へ進む */
+        if(CFG.story==='off' && !cfg.force){ setSky(cfg.mood); resolve(); return; }
         setSky(cfg.mood);
         const F=$('#cineFigure');
         renderPair(F, cfg.pairGap!=null ? cfg.pairGap
@@ -2132,21 +2427,35 @@ const SETTINGS = [
   {k:'dots', label:'文字数ヒント', sub:'【F····】のドット表示', opts:[['on','出す'],['off','消す']]},
   {k:'jp', label:'日本語訳', sub:'意味を表示する', opts:[['on','出す'],['off','消す']]},
   {k:'tts', label:'お手本の音声', sub:'正解の直後・言えなかったときに再生', opts:[['on','鳴らす'],['off','消す']]},
+  {k:'bgm', label:'BGM', sub:'章ごとに音色が変わります', opts:[['on','鳴らす'],['off','消す']]},
   {k:'sfx', label:'効果音', sub:'マイクが反応しないときは「消す」', opts:[['on','鳴らす'],['off','消す']]},
+  {k:'story', label:'物語の演出', sub:'2周目以降、会話を飛ばして練習だけしたいときに', opts:[['on','見る'],['off','とばす']]},
 ];
 function renderSettings(){
   $('#setBody').innerHTML = SETTINGS.map(s=>`
     <div class="set-row">
       <div class="set-label">${s.label}${s.sub?`<small>${s.sub}</small>`:''}</div>
-      <div class="seg" data-k="${s.k}">${s.opts.map(([v,l])=>
-        `<button data-v="${v}" class="${CFG[s.k]===v?'on':''}">${l}</button>`).join('')}</div>
+      <div class="set-ctl">
+        ${s.k==='tts'?'<button class="try-say" id="btnTrySay">▶ 試聴</button>':''}
+        <div class="seg" data-k="${s.k}">${s.opts.map(([v,l])=>
+          `<button data-v="${v}" class="${CFG[s.k]===v?'on':''}">${l}</button>`).join('')}</div>
+      </div>
     </div>`).join('');
+  const trial = $('#btnTrySay');
+  if(trial) trial.onclick = ()=>{
+    AUDIO.get();
+    say('beautiful', {force:true});
+    trial.textContent='♪ 再生中';
+    clearTimeout(trial._t);
+    trial._t = setTimeout(()=>{ trial.textContent='▶ 試聴'; }, 1600);
+  };
   $$('#setBody .seg').forEach(seg=>{
     seg.querySelectorAll('button').forEach(btn=> btn.addEventListener('click',()=>{
       const k=seg.dataset.k, v=btn.dataset.v;
       CFG[k]=v; saveCfg();
       seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b===btn));
       if(k==='judge') setJudgeLevel(v);
+      if(k==='bgm'||k==='input'){ AUDIO.get(); try{ BGM.toggle(); }catch(e){} }
     }));
   });
 }
@@ -2490,10 +2799,23 @@ function wire(){
     }
   });
   // unlock audio on first touch (iOS)
-  const unlock = ()=>{ AUDIO.get(); if(window.speechSynthesis){ try{ const u=new SpeechSynthesisUtterance(' '); u.volume=0; speechSynthesis.speak(u); }catch(e){} }
-    document.removeEventListener('touchend', unlock); document.removeEventListener('click', unlock); };
-  document.addEventListener('touchend', unlock, {once:false});
-  document.addEventListener('click', unlock, {once:false});
+  /* iOS は「ユーザー操作の中で1度も speak() していない」と以降ずっと無音になる。
+     解除は一度きりにせず、毎タップで温存しておく。 */
+  const unlock = ()=>{
+    AUDIO.get();
+    if(!ttsReady && window.speechSynthesis){
+      try{
+        const u=new SpeechSynthesisUtterance('.');
+        u.volume=0; u.rate=10; u.lang='en-US';
+        speechSynthesis.speak(u);
+        ttsReady=true; pickVoice();
+      }catch(e){}
+    }
+    startTtsKeepAlive();
+    try{ BGM.refresh(); }catch(e){}
+  };
+  ['pointerdown','touchend','click'].forEach(ev=>
+    document.addEventListener(ev, unlock, {capture:true}));
 }
 
 /* ---------- init ---------- */
