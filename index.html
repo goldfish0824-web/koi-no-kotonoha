@@ -1427,42 +1427,100 @@ function pickVoice(){ if(!window.speechSynthesis) return;
     || vs.find(v=>/en[-_]US/i.test(v.lang)) || vs.find(v=>/^en/i.test(v.lang)) || null; }
 if (window.speechSynthesis){ pickVoice(); try{ speechSynthesis.onvoiceschanged=pickVoice; }catch(e){} }
 
-/* iOS は放置すると読み上げエンジンが眠り、次の speak() を黙って無視する。
-   無音の発話を短い間隔で流し続けて、常に起きている状態を保つ。 */
-let ttsKeepTimer = 0;
-function ttsPing(){
-  if(!window.speechSynthesis) return;
+/* iOS は「ユーザー操作の中で1度も speak() していない」と以降ずっと無音になる。
+   解除用の発話は短く・ふつうの速さで。極端な rate は iOS で失敗することがある。 */
+function ttsUnlock(){
+  if(ttsReady || !window.speechSynthesis) return;
   try{
-    if(speechSynthesis.speaking || speechSynthesis.pending) return;   /* 読み上げ中は触らない */
-    const u=new SpeechSynthesisUtterance(' ');
-    u.volume=0; u.rate=2; u.lang='en-US';
+    const u=new SpeechSynthesisUtterance('a');
+    u.volume=0; u.rate=1; u.lang='en-US';
     speechSynthesis.speak(u);
+    ttsReady=true; pickVoice();
   }catch(e){}
 }
-function startTtsKeepAlive(){
-  if(!IS_IOS || ttsKeepTimer || !window.speechSynthesis) return;
-  ttsKeepTimer = setInterval(ttsPing, 6000);
+
+/* iOS は放置すると読み上げエンジンが眠り、次の speak() を黙って無視する。
+   ただし「無音の発話」を流し続けて起こすやり方は逆効果だった：
+     ・空白だけの発話は onend が返らず、speaking が立ちっぱなしでキューが詰まる
+     ・volume:0 が直後の発話に引きずられ、鳴っているのに聞こえない
+   発話は一切足さず、resume() で起こし、詰まりは検知して解除する。 */
+let ttsKeepTimer = 0, ttsBusySince = 0;
+function ttsUnjam(limit){
+  if(!window.speechSynthesis) return false;
+  let busy=false;
+  try{ busy = speechSynthesis.speaking || speechSynthesis.pending; }catch(e){ return false; }
+  if(!busy){ ttsBusySince=0; return false; }
+  const now = Date.now();
+  if(!ttsBusySince){ ttsBusySince=now; return false; }
+  if(now - ttsBusySince > (limit||6000)){        /* 長すぎる「読み上げ中」は詰まり */
+    try{ speechSynthesis.cancel(); }catch(e){}
+    ttsBusySince=0; return true;
+  }
+  return false;
 }
+/* 読み上げのために止めたマイクが戻らなかったときの保険 */
+function micWatch(){
+  if(!SRC || !G.running || CFG.input!=='voice' || recWant || sayTimer) return;
+  let busy=false; try{ busy = speechSynthesis.speaking || speechSynthesis.pending; }catch(e){}
+  if(busy) return;
+  startRec();
+}
+function ttsPing(){
+  if(!window.speechSynthesis) return;
+  try{ speechSynthesis.resume(); }catch(e){}
+  ttsUnjam();
+  micWatch();
+}
+function startTtsKeepAlive(){
+  if(ttsKeepTimer || !window.speechSynthesis) return;
+  ttsKeepTimer = setInterval(ttsPing, 3000);
+}
+
 function say(word, opts){
   const force = opts && opts.force;
   if(!word || !window.speechSynthesis) return;
   if(CFG.tts!=='on' && !force) return;
-  const resume = IS_IOS && recWant && CFG.input==='voice' && !force;
+
+  /* 認識中のマイクは iOS も Android も読み上げの音を飲み込む。
+     必ず先に止め、セッションが空いてから speak() する。 */
+  const resume = recWant && CFG.input==='voice' && !force;
   if(resume) stopRec();
-  const done = () => { clearTimeout(sayTimer); sayTimer=0;
+
+  let ended=false, started=false, retried=0;
+  const done = () => {
+    if(ended) return; ended=true;
+    clearTimeout(sayTimer); sayTimer=0; ttsBusySince=0;
     if(resume && G.running && CFG.input==='voice' && !recWant)
-      setTimeout(()=>{ if(G.running && CFG.input==='voice' && !recWant) startRec(); }, IS_IOS?300:0); };
-  const speakNow = () => { try{
-    const u=new SpeechSynthesisUtterance(word);
-    u.lang='en-US'; u.rate=.9; u.pitch=1.05; u.volume=1;
-    if(ttsVoice) u.voice=ttsVoice; u.onend=done; u.onerror=done;
-    speechSynthesis.speak(u);
-    clearTimeout(sayTimer); sayTimer=setTimeout(done, 1100+word.length*120);
-  }catch(e){ done(); } };
+      setTimeout(()=>{ if(G.running && CFG.input==='voice' && !recWant) startRec(); }, IS_IOS?200:0);
+  };
+  const speakNow = () => {
+    if(ended) return;
+    try{
+      try{ speechSynthesis.resume(); }catch(e){}
+      const u=new SpeechSynthesisUtterance(word);
+      u.lang='en-US'; u.rate=.9; u.pitch=1.05; u.volume=1;
+      if(ttsVoice) u.voice=ttsVoice;
+      u.onstart=()=>{ started=true; };
+      u.onend=done; u.onerror=done;
+      speechSynthesis.speak(u);
+      /* iOS は speak() を黙って捨てることがある。始まらなければ一度だけ鳴らし直す。 */
+      setTimeout(()=>{
+        if(ended||started) return;
+        let busy=false; try{ busy = speechSynthesis.speaking || speechSynthesis.pending; }catch(e){}
+        if(busy) return;
+        if(retried++ < 1){ try{ speechSynthesis.cancel(); }catch(e){} setTimeout(speakNow, 80); }
+        else done();
+      }, 320);
+      clearTimeout(sayTimer); sayTimer=setTimeout(done, 1600+word.length*130);
+    }catch(e){ done(); }
+  };
   try{
-    try{ speechSynthesis.resume(); }catch(e){}
-    if(speechSynthesis.speaking||speechSynthesis.pending){ speechSynthesis.cancel(); setTimeout(speakNow, IS_IOS?60:15); }
-    else speakNow();
+    ttsUnjam(1500);
+    let busy=false; try{ busy = speechSynthesis.speaking || speechSynthesis.pending; }catch(e){}
+    if(busy){ try{ speechSynthesis.cancel(); }catch(e){} }
+    /* マイクの解放も cancel() の反映も即時ではない。ここを待たないと無音になる。 */
+    const wait = (resume ? (IS_IOS?240:100) : 0) + (busy ? (IS_IOS?80:20) : 0);
+    if(wait) setTimeout(speakNow, wait); else speakNow();
   }catch(e){ done(); }
 }
 
@@ -2429,7 +2487,7 @@ async function diagMic(){
 
 /* ---------- wiring ---------- */
 function wire(){
-  $('#btnStart').onclick = ()=>{ AUDIO.get(); if(window.speechSynthesis && !ttsReady){ try{ const u=new SpeechSynthesisUtterance('.'); u.volume=0; speechSynthesis.speak(u); ttsReady=true; }catch(e){} } renderSelect(); show('select'); };
+  $('#btnStart').onclick = ()=>{ AUDIO.get(); ttsUnlock(); startTtsKeepAlive(); renderSelect(); show('select'); };
   $('#btnHelp').onclick = ()=> openModal('#mHelp');
   $('#helpClose').onclick = ()=> closeModal('#mHelp');
   $('#btnSettings').onclick = $('#btnSettings2').onclick = ()=>{ renderSettings(); openModal('#mSettings'); };
@@ -2531,14 +2589,7 @@ function wire(){
      解除は一度きりにせず、毎タップで温存しておく。 */
   const unlock = ()=>{
     AUDIO.get();
-    if(!ttsReady && window.speechSynthesis){
-      try{
-        const u=new SpeechSynthesisUtterance('.');
-        u.volume=0; u.rate=10; u.lang='en-US';
-        speechSynthesis.speak(u);
-        ttsReady=true; pickVoice();
-      }catch(e){}
-    }
+    ttsUnlock();
     startTtsKeepAlive();
   };
   ['pointerdown','touchend','click'].forEach(ev=>
