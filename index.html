@@ -170,6 +170,9 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   backdrop-filter:blur(6px);min-height:118px}
 .cine-name{font-family:var(--disp);font-weight:900;color:var(--blush);font-size:15px;margin-bottom:6px;min-height:19px}
 .cine-text{font-family:var(--story);font-size:17px;line-height:1.85;min-height:60px}
+/* 最後の「完」だけは、セリフではなく幕として見せる */
+.cine-text.fin{text-align:center;font-size:19px;letter-spacing:.22em;color:var(--cream);
+  padding:14px 0 6px;text-shadow:0 0 22px rgba(255,143,177,.45)}
 .cine-cta{display:flex;justify-content:flex-end;margin-top:12px}
 .cine-next{font-size:12.5px;color:var(--sunset);display:flex;align-items:center;gap:6px;opacity:.9}
 .cine-next .tri{animation:bob 1.1s ease-in-out infinite}
@@ -517,6 +520,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .secret.locked{background:rgba(255,255,255,.04);border-style:dashed;
   border-color:var(--haze);color:var(--muted);cursor:not-allowed}
 .secret.locked .s-t{font-weight:600}
+.secret-hint{margin:8px 2px 0;color:var(--dim);font-size:11.5px;line-height:1.75}
 /* 二十年後の一枚絵 */
 .scene-art{position:relative;z-index:2;width:100%;height:100%;
   display:flex;align-items:center;justify-content:center;
@@ -822,6 +826,7 @@ function phon(x) {
   s = s.replace(/([aeiou])r/g, 'r');            // ar/er/or/ur → r（あいまい母音＋r）
   s = s.replace(/([bcdfgkmnprstv])e$/, '$1');   // 語末のサイレント e
   s = s.replace(/[dt]$/, 't');                  // 語末の d / t
+  s = s.replace(/v$/, 'f');                     // 語末の v / f（love ↔ of, laugh）
   s = s.replace(/(.)\1+/g, '$1');
   return s || x;
 }
@@ -845,6 +850,20 @@ function variantsOf(a) {
   if (/[^aeiou][aeiou][^aeiouwxy]$/.test(a)) { const c = a.slice(-1); v.add(a + c + 'ing'); v.add(a + c + 'ed'); v.add(a + c + 'er'); }
   return v;
 }
+
+/* 認識器が決まって別の語に化ける組み合わせ。
+   短い語ほど、認識器が前後の文脈で勝手に補正してしまい、正しく発音しても別語が返る。
+   ここは「その語を答えるときだけ」効くので、他の問題の判定はゆるまない。
+   同じ区画の別見出し語は POOL_WORDS が先に弾くため、教材の対比も壊れない。 */
+const MISHEARD = {
+  ill:  ['isle','aisle','heal','heel','earl','ale','eel','el','ell','l','a',
+         'iwill','illwill','hill','will','oil','ail','yield'],
+  love: ['of','lub','luv','lov','laf','lof','dove','glove','club','lab','rub','above','shove']
+};
+const misheardOf = a => {
+  const list = MISHEARD[a];
+  return list ? new Set(list.map(norm)) : null;
+};
 
 const VOW = new Set(['a', 'e', 'i', 'o', 'u', 'y']);
 const subCost = (x, y) => x === y ? 0 : (VOW.has(x) && VOW.has(y) ? .5 : 1);
@@ -909,9 +928,9 @@ function onsetOK(a, b) {
 
 /* 判定の甘さ。g=頭の音が違ってもよい水準、l*=綴りの近さ、p*=音の近さ、数字は語の長さ */
 const LEVELS = {
-  normal: { g: .88, l8: .72, p8: .76, l5: .74, p5: .78, l4: .70, p4: .74, l3: .66, ck: .82 },
-  soft:   { g: .80, l8: .62, p8: .66, l5: .64, p5: .68, l4: .60, p4: .64, l3: .56, ck: .74 },
-  very:   { g: .72, l8: .52, p8: .56, l5: .54, p5: .58, l4: .50, p4: .54, l3: .48, ck: .66, lr: true }
+  normal: { g: .88, l8: .72, p8: .76, l5: .74, p5: .78, l4: .70, p4: .74, l3: .66, p3: .70, ck: .82 },
+  soft:   { g: .80, l8: .62, p8: .66, l5: .64, p5: .68, l4: .60, p4: .64, l3: .56, p3: .60, ck: .74 },
+  very:   { g: .72, l8: .52, p8: .56, l5: .54, p5: .58, l4: .50, p4: .54, l3: .48, p3: .52, ck: .66, lr: true }
 };
 
 /* 「おしい」の扱い。show＝おしいと表示する下限 / cnt＝この回数おしいが続いたら正解にする */
@@ -934,11 +953,13 @@ function judge(text, answers) {
     const A = norm(raw);
     if (!A) continue;
     const vars = variantsOf(A), pA = phonX(A, LOOSE), n = A.length, kA = cons(phon(A));
+    const alt = misheardOf(A);
     for (const c of cands) {
       if (vars.has(c)) return hit;
       /* 同じ区画に載っている「別の見出し語」だけは空耳として通さない
          （collect と correct のように、教材がわざと並べている対比を守るため） */
       if (POOL_WORDS.has(c)) continue;
+      if (alt && alt.has(c)) return hit;   /* この語だけの空耳リスト */
       if (n >= 3 && phonX(c, LOOSE) === pA) return hit;
       /* 子音の骨格が一致すれば通す（母音は聞き間違いが多いので軽く見る） */
       if (n >= 4 && kA.length >= 3 && cons(phon(c)) === kA) return hit;
@@ -956,7 +977,7 @@ function judge(text, answers) {
         if (n >= 8 && (s >= L.l8 || ps >= L.p8)) return hit;
         if (n >= 5 && (s >= L.l5 || ps >= L.p5)) return hit;
         if (n === 4 && (s >= L.l4 || ps >= L.p4)) return hit;
-        if (n === 3 && s >= L.l3) return hit;
+        if (n === 3 && (s >= L.l3 || ps >= L.p3)) return hit;
         if (n >= 5 && kA.length >= 3 && ks >= L.ck) return hit;
       }
     }
@@ -1405,12 +1426,14 @@ const EPILOGUE = {
     {who:'わたし', text:'……文句ばっかり言ってないの。頑張れば、いいことあるから。'},
     {who:'', text:'我ながら、ずいぶん雑な励まし方だと思う。娘は「出た、お母さんの必殺技」と笑って、パンをくわえたまま鞄を探しはじめた。'},
     {who:'大翔', text:'おい、時間。……あと、牛乳こぼすなよ。'},
+    {who:'', text:'夫は、「またか」といった様子で、娘の姿を眺めている。'},
     {who:'', text:'（勉強なんて、ぜんぶが仕事やお金に結びつくわけじゃない。）'},
     {who:'', text:'（わたしだって、あのころ必死で覚えた英単語は、ほとんど忘れてしまった。）', pause:700},
     {who:'', text:'（でも、それでいい。だって――)'},
     {who:'', text:'（あの放課後の図書室で、となりでページをめくる音を聞いていた時間がなかったら。）'},
-    {who:'', text:'（この騒がしい朝は、どこにもなかったのだから。）', slow:true, pause:900},
-    {who:'', text:'顔を上げる。目には、慌ただしく朝の準備をする家族の姿が映っていた。', slow:true, fx:true}
+    {who:'', text:'（この騒がしい朝は、どこにもなかったのだから。）', pause:900},
+    {who:'', text:'顔を上げる。目には、慌ただしく朝の準備をする家族の姿が映っていた。', fx:true, pause:900},
+    {who:'', text:'恋のことのは　season1　完', fin:true}
   ]
 };
 
@@ -2327,6 +2350,7 @@ const CINE = (() => {
         function paint(){
           const b=beats[i]||{};
           nameEl.textContent=b.who||'';
+          textEl.classList.toggle('fin', !!b.fin);   /* 「完」だけは中央に大きく */
           if(!art) cineBeat(F, b.who===CH().name);
           clearTimeout(typeT); typing=false;
           gateAt = b.pause ? Date.now()+b.pause : 0;
@@ -2430,7 +2454,8 @@ function renderSecret(){
     : `<button class="secret locked" id="btnSecret" disabled>
          <span class="s-t">🔒 かくれエピソード</span>
          <span class="s-s">全てSランクでクリアしたら見れるようになります（あと ${sRemaining()} 章）</span>
-       </button>`;
+       </button>
+       <p class="secret-hint">達成のヒント：正しく発音しているのに、どうしても聞き取ってもらえないことがあります。そんなときは、画面下の「キーボードで入力する」に切り替えてみましょう。</p>`;
   const b = $('#btnSecret');
   if(b && open) b.onclick = ()=>{ SFX.tap(); playEpilogue(); };
 }
