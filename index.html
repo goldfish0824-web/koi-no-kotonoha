@@ -26,6 +26,11 @@
 <meta name="license" content="CC BY-NC-SA 4.0">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#241B3A">
+<!-- ホーム画面に追加したときの名前とアイコン（manifest-koi.json と koi_img/ のアイコン） -->
+<link rel="manifest" href="manifest-koi.json">
+<link rel="icon" type="image/png" href="koi_img/icon-192.png">
+<link rel="apple-touch-icon" href="koi_img/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="恋のことのは">
 <title>恋のことのは ── 声にするたび、恋が実る</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -532,6 +537,22 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 @keyframes sceneIn{from{opacity:0;transform:scale(1.03)}to{opacity:1;transform:scale(1)}}
 .mini-link{color:var(--muted);text-decoration:underline;text-underline-offset:3px;font-size:12.5px}
 .top-actions{display:flex;gap:8px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+/* ---------- ホーム画面に追加（スマホのときだけ出す） ---------- */
+.a2hs{display:none;align-self:center;align-items:center;gap:8px;padding:10px 18px;border-radius:999px;
+  font-size:13.5px;font-weight:700;color:var(--cream);background:rgba(255,255,255,.06);border:1px solid var(--haze)}
+.a2hs.on{display:inline-flex}
+.a2hs:active{transform:scale(.97)}
+.a2hs-steps{margin:0;padding:0;list-style:none;counter-reset:st}
+.a2hs-steps li{position:relative;padding:10px 0 10px 38px;font-size:14px;line-height:1.75;
+  border-bottom:1px dashed rgba(84,64,111,.5)}
+.a2hs-steps li:last-child{border-bottom:0}
+.a2hs-steps li::before{counter-increment:st;content:counter(st);position:absolute;left:0;top:11px;width:26px;height:26px;
+  border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:13px;color:#3A0E22;
+  background:linear-gradient(135deg,var(--blush),var(--blush-deep))}
+.a2hs-steps b{color:var(--blush)}
+.a2hs-steps .ico{display:inline-block;width:20px;height:20px;vertical-align:-4px;margin:0 2px;color:var(--blush)}
+.a2hs-steps small{display:block;color:var(--muted);font-size:12px;line-height:1.6}
+.a2hs-note{font-size:12px;color:var(--muted);line-height:1.7;margin:10px 0 0}
 </style>
 </head>
 <body>
@@ -558,6 +579,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
         <button class="mini-link" id="btnDiagTop">マイクの確認</button>
         <button class="mini-link" id="btnReset">記録を消す</button>
       </div>
+      <button class="a2hs" id="btnA2hs">📲 ホーム画面に追加する</button>
       <div class="tts-hint">
         <button class="try-say" id="btnTrySayTop">▶ お手本の音声を鳴らしてみる</button>
         <p>正解のときにお手本が読み上げられないときは、<br>ここを一度押すと鳴るようになります。</p>
@@ -801,6 +823,17 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
       <p class="muted" style="font-size:12px">マイクが使えないときは、下の「キーボードで入力する」で切り替えられます。</p>
     </div>
     <button class="btn primary block" id="helpClose" style="margin-top:16px">とじる</button>
+  </div>
+</div>
+
+<div class="modal" id="mA2hs">
+  <div class="modal-card">
+    <h2>ホーム画面に追加</h2>
+    <p class="lead">ホーム画面に「恋のことのは」のアイコンができて、次からはワンタップで開けます。</p>
+    <ol class="a2hs-steps" id="a2hsSteps"></ol>
+    <p class="a2hs-note" id="a2hsNote"></p>
+    <button class="btn primary block" id="a2hsClose" style="margin-top:16px">とじる</button>
+    <button class="btn ghost block" id="a2hsDone" style="margin-top:8px">追加できた（もう出さない）</button>
   </div>
 </div>
 
@@ -2812,6 +2845,10 @@ function wire(){
   $('#ttsFix').onclick = ()=>{ setTtsBroken(false); ttsRescue(); };
   $('#btnHelp').onclick = ()=> openModal('#mHelp');
   $('#helpClose').onclick = ()=> closeModal('#mHelp');
+  $('#btnA2hs').onclick = ()=> A2HS.open();
+  $('#a2hsClose').onclick = ()=> closeModal('#mA2hs');
+  $('#a2hsDone').onclick = ()=>{ A2HS.hide(); closeModal('#mA2hs');
+    toast('ボタンを消しました。ホーム画面のアイコンから開けます。'); };
   $('#btnSettings').onclick = $('#btnSettings2').onclick = ()=>{ renderSettings(); openModal('#mSettings'); };
   $('#setClose').onclick = ()=> closeModal('#mSettings');
   $('#btnTitle').onclick = ()=>{ setSky(''); show('title'); };
@@ -2918,6 +2955,65 @@ function wire(){
     document.addEventListener(ev, unlock, {capture:true}));
 }
 
+/* =========================================================================
+   ホーム画面に追加 ── スマホ（iPhone・Android）で開いたときだけ、タイトルにボタンを出す。
+   ・Android の Chrome は、インストールの画面をそのまま開ける（beforeinstallprompt）。来ないときは手順を出す。
+   ・iPhone は Web ページから開けないので、手順を出す。
+   ・manifest-koi.json の display は minimal-ui。iPhone は minimal-ui を使わず、ふつうの Safari で開く
+     （記録と音声入力が、Safari で遊ぶときと同じになる）。start_url は書かない（このページ自身になる）。
+   ・「追加できた」を押すと、この端末ではボタンを出さない（localStorage koi:a2hs）。
+   ========================================================================= */
+const A2HS = (() => {
+  const ua = navigator.userAgent;
+  const isAndroid = /Android/i.test(ua);
+  const inApp = /Line\/|FBAN|FBAV|Instagram/i.test(ua);
+  const launched = () => matchMedia('(display-mode: standalone)').matches
+    || matchMedia('(display-mode: minimal-ui)').matches || navigator.standalone === true;
+  const SHARE = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" '
+    + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/>'
+    + '<path d="M7 10H5.5A1.5 1.5 0 0 0 4 11.5v8A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5v-8A1.5 1.5 0 0 0 18.5 10H17"/></svg>';
+  let deferred = null;
+  const hidden = () => { try{ return localStorage.getItem('koi:a2hs')==='1'; }catch(e){ return false; } };
+  function refresh(){
+    const b = $('#btnA2hs'); if(!b) return;
+    b.classList.toggle('on', (IS_IOS || isAndroid || !!deferred) && !launched() && !hidden());
+  }
+  function hide(){ try{ localStorage.setItem('koi:a2hs','1'); }catch(e){} refresh(); }
+  function steps(ios){
+    if(ios) return { list:[
+        `画面の下（または上）にある <b>［共有］</b>${SHARE}をタップ。<small>見つからないときは、<b>［…］</b>をタップすると出てきます。</small>`,
+        'メニューを下にスクロールして、<b>「ホーム画面に追加」</b>をタップ。',
+        '<b>「Webアプリとして開く」</b>が出ていたら、<b>オフ</b>にする。<small>Safari で開くので、今までの記録と音声入力がそのまま使えます。</small>',
+        '右上の<b>「追加」</b>をタップ。'],
+      note: inApp ? 'LINE などのアプリの中で開いているときは、先にメニューから「Safari で開く」を選んでください。'
+                  : 'Chrome など Safari 以外で開いているときも、同じように［共有］から追加できます。' };
+    return { list:[
+        '右上の <b>［⋮］</b>（メニュー）をタップ。',
+        '<b>「ホーム画面に追加」</b>または<b>「アプリをインストール」</b>をタップ。',
+        '<b>「追加」</b>（または「インストール」）をタップ。'],
+      note: inApp ? 'LINE などのアプリの中で開いているときは、先にメニューから「ブラウザで開く」を選んでください。' : '' };
+  }
+  /* Android の Chrome：インストールの画面をそのまま出せたら true */
+  async function native(){
+    if(!deferred) return false;
+    const p = deferred; deferred = null;
+    try{ await p.prompt(); const r = await p.userChoice;
+         if(r && r.outcome==='accepted') toast('ホーム画面に追加しました。'); }catch(e){}
+    refresh(); return true;
+  }
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e; refresh(); });
+  window.addEventListener('appinstalled', () => { deferred = null; hide(); });
+  async function open(){
+    if(await native()) return;
+    const st = steps(IS_IOS);
+    $('#a2hsSteps').innerHTML = st.list.map(t=>`<li>${t}</li>`).join('');
+    $('#a2hsNote').textContent = st.note;
+    $('#a2hsNote').style.display = st.note ? '' : 'none';
+    openModal('#mA2hs');
+  }
+  return { refresh, open, hide, steps };
+})();
+
 /* ---------- init ---------- */
 (async function init(){
   await loadAll();
@@ -2927,6 +3023,7 @@ function wire(){
   wire();
   renderSelect();
   updateReviewLinks();
+  A2HS.refresh();
 })();
 </script>
 </body>

@@ -1,0 +1,14 @@
+{
+  "name": "恋のことのは",
+  "short_name": "恋のことのは",
+  "description": "声にするたび、恋が実る英単語ゲーム",
+  "lang": "ja",
+  "display": "minimal-ui",
+  "background_color": "#241B3A",
+  "theme_color": "#241B3A",
+  "icons": [
+    { "src": "koi_img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "koi_img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "koi_img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
